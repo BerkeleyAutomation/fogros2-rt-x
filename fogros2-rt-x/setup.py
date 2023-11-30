@@ -48,6 +48,7 @@ setup(
     entry_points={
         "console_scripts": [
             "replayer = fogros2_rt_x.replayer:main",
+            "recorder = fogros2_rt_x.recorder:main",
         ],
     },
 )
