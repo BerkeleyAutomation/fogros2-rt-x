@@ -35,11 +35,14 @@ import socket
 
 import rclpy
 from std_msgs.msg import String
-
+from .dataset_loader import *
 
 def main(args=None):
     rclpy.init(args=args)
 
+    dataset = load_rlds_dataset("taco_play")
+    print(dataset)
+    exit()
     node = rclpy.create_node("minimal_publisher")
     publisher = node.create_publisher(String, "topic", 10)
     host_name = socket.gethostname()
