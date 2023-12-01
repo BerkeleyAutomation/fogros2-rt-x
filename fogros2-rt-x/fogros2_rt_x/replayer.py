@@ -35,15 +35,65 @@ import socket
 
 import rclpy
 from std_msgs.msg import String
-from .dataset_loader import *
+from .dataset_utils import *
+from fogros2_rt_x_msgs.msg import Step, Observation, Action
+
+def cast_tensor_to_class_type(tensor, class_type):
+    return class_type(tensor.numpy())
+
+def cast_value_to_class_type(tensor, class_type):
+    return class_type(tensor)
+
+def tf_step_to_ros2_msg(step):
+    ros2_step = Step()
+    ros2_step.observation = Observation()
+    ros2_step.action = Action()
+    ros2_step.reward = cast_tensor_to_class_type(step['reward'], type(ros2_step.reward))
+    ros2_step.is_first = cast_tensor_to_class_type(step['is_first'], type(ros2_step.is_first)) 
+    ros2_step.is_last = cast_tensor_to_class_type(step['is_last'], type(ros2_step.is_last)) 
+    ros2_step.is_terminal = cast_tensor_to_class_type(step['is_terminal'], type(ros2_step.is_terminal)) 
+    for k, v in step['observation'].items():
+        if k == 'image':
+            continue
+        field_type = type(getattr(ros2_step.observation, k))
+        print(field_type, k, str(field_type))
+        if str(field_type) == "<class 'array.array'>":
+            # TODO: assume all float32
+            setattr(ros2_step.observation, k, [float(x) for x in v.numpy()])
+        elif str(field_type) == "<class 'str'>":
+            setattr(ros2_step.observation, k, str(v.numpy()))
+        else:
+            setattr(ros2_step.observation, k, cast_value_to_class_type(v, field_type))
+        # print(type(getattr(ros2_step.observation, k)), v.numpy(), type(v.numpy()[0]))
+        # setattr(ros2_step.observation, k, [float(x) for x in v.numpy()])
+        # setattr(ros2_step.observation, k, cast_value_to_class_type(v, getattr(ros2_step.observation, k)))
+    for k, v in step['action'].items():
+        field_type = type(getattr(ros2_step.action, k))
+        print(field_type, k, str(field_type))
+        if str(field_type) == "<class 'array.array'>":
+            # TODO: assume all float32
+            setattr(ros2_step.action, k, [float(x) for x in v.numpy()])
+        elif str(field_type) == "<class 'str'>":
+            setattr(ros2_step.action, k, str(v.numpy()))
+        else:
+            setattr(ros2_step.action, k, cast_value_to_class_type(v, field_type))
+    return ros2_step
 
 def main(args=None):
     rclpy.init(args=args)
+    node = rclpy.create_node("fogros2_rt_x")
+    # logger 
+    logger = node.get_logger()
 
-    dataset = load_rlds_dataset("taco_play")
-    print(dataset)
+    dataset = load_rlds_dataset("bridge")
+    print(get_dataset_info(["bridge"]))
+    episode = next(iter(dataset))
+    # for elem in next(iter(episode['steps'])).items():
+    #     print(elem)
+    # print(dataset)
+    tf_step_to_ros2_msg(next(iter(episode['steps'])))
     exit()
-    node = rclpy.create_node("minimal_publisher")
+    
     publisher = node.create_publisher(String, "topic", 10)
     host_name = socket.gethostname()
     host_ip = socket.gethostbyname(host_name)
