@@ -87,28 +87,21 @@ def main(args=None):
 
     dataset = load_rlds_dataset("bridge")
     print(get_dataset_info(["bridge"]))
-    episode = next(iter(dataset))
-    # for elem in next(iter(episode['steps'])).items():
-    #     print(elem)
-    # print(dataset)
-    tf_step_to_ros2_msg(next(iter(episode['steps'])))
-    exit()
-    
-    publisher = node.create_publisher(String, "topic", 10)
-    host_name = socket.gethostname()
-    host_ip = socket.gethostbyname(host_name)
 
-    msg = String()
+
+    publisher = node.create_publisher(Step, "step_topic", 10)
+    
     i = 0
 
     def timer_callback():
-        nonlocal i
-        msg.data = "Hello World from %s (%s): %d" % (host_name, host_ip, i)
-        i += 1
-        node.get_logger().warning('Publishing: "%s"' % msg.data)
+        episode = next(iter(dataset))
+        # for elem in next(iter(episode['steps'])).items():
+        #     print(elem)
+        # print(dataset)
+        msg = tf_step_to_ros2_msg(next(iter(episode['steps'])))
         publisher.publish(msg)
 
-    timer_period = 0.5  # seconds
+    timer_period = 2  # seconds
     timer = node.create_timer(timer_period, timer_callback)
 
     rclpy.spin(node)
