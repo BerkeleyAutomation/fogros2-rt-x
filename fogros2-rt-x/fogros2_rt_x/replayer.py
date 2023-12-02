@@ -34,7 +34,7 @@
 import socket
 
 import rclpy
-from std_msgs.msg import String
+from rclpy.node import Node
 from .dataset_utils import *
 from fogros2_rt_x_msgs.msg import Step, Observation, Action
 
@@ -79,37 +79,34 @@ def tf_step_to_ros2_msg(step):
             setattr(ros2_step.action, k, cast_value_to_class_type(v, field_type))
     return ros2_step
 
+
+class DatasetReplayer(Node):
+    def __init__(self, dataset_name):
+        super().__init__("fogros2_rt_x_replayer")
+
+        self.publisher = self.create_publisher(Step, "step_topic", 10)
+        self.dataset = load_rlds_dataset(dataset_name)
+        self.logger = self.get_logger()
+        self.logger.info("Loading Dataset " + str(get_dataset_info(["bridge"])))
+
+        timer_period = 2  # seconds
+        self.create_timer(timer_period, self.timer_callback)
+
+    def timer_callback(self):
+        episode = next(iter(self.dataset))
+        msg = tf_step_to_ros2_msg(next(iter(episode['steps'])))
+        self.publisher.publish(msg)
+
+
 def main(args=None):
     rclpy.init(args=args)
-    node = rclpy.create_node("fogros2_rt_x")
-    # logger 
-    logger = node.get_logger()
-
-    dataset = load_rlds_dataset("bridge")
-    print(get_dataset_info(["bridge"]))
-
-
-    publisher = node.create_publisher(Step, "step_topic", 10)
-    
-    i = 0
-
-    def timer_callback():
-        episode = next(iter(dataset))
-        # for elem in next(iter(episode['steps'])).items():
-        #     print(elem)
-        # print(dataset)
-        msg = tf_step_to_ros2_msg(next(iter(episode['steps'])))
-        publisher.publish(msg)
-
-    timer_period = 2  # seconds
-    timer = node.create_timer(timer_period, timer_callback)
+    node = DatasetReplayer(dataset_name = "bridge")
 
     rclpy.spin(node)
 
     # Destroy the timer attached to the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
-    node.destroy_timer(timer)
     node.destroy_node()
     rclpy.shutdown()
 

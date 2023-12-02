@@ -35,38 +35,35 @@ import socket
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
+from .dataset_utils import *
+from fogros2_rt_x_msgs.msg import Step, Observation, Action
 
-
-class MinimalSubscriber(Node):
+class DatasetRecorder(Node):
     def __init__(self):
-        super().__init__("minimal_subscriber")
-        self.host_name = socket.gethostname()
-        self.host_ip = socket.gethostbyname(self.host_name)
+        super().__init__("fogros2_rt_x_recorder")
 
         self.subscription = self.create_subscription(
-            String, "topic", self.listener_callback, 10
+            Step, "step_topic", self.listener_callback, 10
         )
         self.subscription  # prevent unused variable warning
 
-    def listener_callback(self, msg):
+    def listener_callback(self, step_msg):
         self.get_logger().warning(
-            'I am %s (%s). I heard: "%s"'
-            % (self.host_name, self.host_ip, msg.data)
+            f"Received step: {step_msg}"
         )
 
 
 def main(args=None):
     rclpy.init(args=args)
 
-    minimal_subscriber = MinimalSubscriber()
+    dataset_recorder = DatasetRecorder()
 
-    rclpy.spin(minimal_subscriber)
+    rclpy.spin(dataset_recorder)
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
-    minimal_subscriber.destroy_node()
+    dataset_recorder.destroy_node()
     rclpy.shutdown()
 
 
