@@ -41,112 +41,10 @@ import envlogger
 from envlogger import step_data
 import tensorflow_datasets as tfds
 from envlogger.backends import tfds_backend_writer
-
+from .dataset_spec import DatasetFeatureSpec
 
 # code borrowed from https://github.com/rail-berkeley/oxe_envlogger/blob/main/oxe_envlogger/dm_env.py
 import dm_env
-from dm_env import specs
-class DummyDmEnv():
-    """
-    This is a dummy class to use so that the dm_env.Environment interface
-    can still receive the observation_space and action_space. So that the
-    logging can be done in the dm_env.Environment interface.
-
-    https://github.com/google-deepmind/dm_env
-    """
-
-    def __init__(self,
-                 observation_space,
-                 action_space,
-                 step_callback,
-                 reset_callback,
-                 ):
-        """
-        :param observation_space: gym observation space
-        :param action_space: gym action space
-        :param step_callback: callback function to call gymenv.step
-        :param reset_callback: callback function to call gymenv.reset
-        """
-        self.step_callback = step_callback
-        self.reset_callback = reset_callback
-        self.observation_space = observation_space
-        self.action_space = action_space
-
-    def step(self, action) -> dm_env.TimeStep:
-        # Note that dm_env.step doesn't accept additional arguments
-        val = self.step_callback(action)
-        obs, reward, terminate, truncate, info = val
-        reward = float(reward)
-        if terminate:
-            ts = dm_env.termination(reward=reward, observation=obs)
-        elif truncate:
-            ts = dm_env.truncation(reward=reward, observation=obs)
-        else:
-            ts = dm_env.transition(reward=reward, observation=obs)
-        return ts
-
-    def reset(self) -> dm_env.TimeStep:
-        # Note that dm_env.reset doesn't accept additional arguments
-        obs, _ = self.reset_callback()
-        ts = dm_env.restart(obs)
-        return ts
-
-    # def cast_tf_datatype_to_numpy(self, tf_datatype):
-    #     # TODO: placeholder
-    #     if tf_datatype == tf.float32:
-    #         return np.float32
-    #     elif tf_datatype == tf.float64:
-    #         return np.float64
-    #     elif tf_datatype == tf.string:
-    #         return np.str
-    #     else:
-    #         raise NotImplementedError
-    
-    def cast_tf_datatype_to_numpy(self, tf_datatype):
-        return tf_datatype.as_numpy_dtype
-    
-    def from_tf_feature_to_spec(self, feature) -> specs:
-        print(feature)
-        spec = {
-            key: specs.Array(
-                dtype=self.cast_tf_datatype_to_numpy(space.dtype),
-                shape=space.shape,
-                name=key,
-            )
-            for key, space in feature.items() if space.dtype != tf.string
-        }
-
-        return spec
-
-    def observation_spec(self):
-        return self.from_tf_feature_to_spec({
-                        # 'image': tfds.features.Image(shape=(480, 640, 3), dtype=tf.uint8),
-                        'natural_language_embedding': tfds.features.Tensor(shape=(512,), dtype=tf.float32),
-                        # 'natural_language_instruction': tf.string,
-                        'state': tfds.features.Tensor(shape=(7,), dtype=tf.float32),
-                    })
-
-    def action_spec(self):
-        return self.from_tf_feature_to_spec({
-                        # 'open_gripper': tf.bool,
-                        'rotation_delta':  tfds.features.Tensor(shape=(3,), dtype=tf.float32),
-                        # 'terminate_episode': tf.float32,
-                        'world_vector': tfds.features.Tensor(shape=(3,), dtype=tf.float32),
-                    })
-
-    def reward_spec(self):
-        return specs.Array(
-            shape=(),
-            dtype=np.float32,
-            name='reward',
-        )
-
-    def discount_spec(self):
-        return specs.Array(
-            shape=(),
-            dtype=np.float32,
-            name='discount',
-        )
 
 
 class DatasetRecorder(Node):
@@ -160,40 +58,39 @@ class DatasetRecorder(Node):
                         'state': tfds.features.Tensor(shape=(7,), dtype=tf.float32),
                     })
         self.action_spec = tfds.features.FeaturesDict({
-                        # 'open_gripper': tf.bool,
+                        'open_gripper': tfds.features.Scalar(dtype=tf.bool),
                         'rotation_delta':  tfds.features.Tensor(shape=(3,), dtype=tf.float32),
-                        # 'terminate_episode': tf.float32,
+                        'terminate_episode': tfds.features.Scalar(dtype=tf.float32),
                         'world_vector': tfds.features.Tensor(shape=(3,), dtype=tf.float32),
                     })
-        dataset_config = tfds.rlds.rlds_base.DatasetConfig(
-            name='bridge',
-            observation_info=self.observation_spec,
-            action_info=self.action_spec,
-            reward_info=tf.float64,
-            discount_info=tf.float64,
-            step_metadata_info={'is_first': tf.bool, 'is_last': tf.bool, 'is_terminal': tf.bool})
+
+        self.feature_spec = DatasetFeatureSpec(
+            observation_spec=self.observation_spec,
+            action_spec=self.action_spec,
+            step_spec={
+                'reward': tfds.features.Scalar(dtype=tf.float64),
+                'discount': tfds.features.Scalar(dtype=tf.float64),
+                'is_first': tfds.features.Scalar(dtype=tf.bool),
+                'is_last': tfds.features.Scalar(dtype=tf.bool),
+                'is_terminal': tfds.features.Scalar(dtype=tf.bool),
+            }
+        )
+        print(self.feature_spec.spec_to_ros2_message_definition(self.feature_spec.observation_spec))
+        print(self.feature_spec.spec_to_ros2_message_definition(self.feature_spec.action_spec))
+        print(self.feature_spec.spec_to_ros2_message_definition(self.feature_spec.step_spec))
+        dataset_config = self.feature_spec.to_dataset_config('bridge')
+        # tfds.rlds.rlds_base.DatasetConfig(
+        #     name='bridge',
+        #     observation_info=self.observation_spec,
+        #     action_info=self.action_spec,
+        #     reward_info=tf.float64,
+        #     discount_info=tf.float64,
+        #     step_metadata_info={'is_first': tf.bool, 'is_last': tf.bool, 'is_terminal': tf.bool})
         
         self.last_action = None 
         self.last_observation = None 
         self.last_reward = 0.0
         self.last_is_terminal = False
-
-        def step_callback(action):
-            # return value is 
-            # observation, reward, is_terminal, is_truncated, info
-            return (self.last_observation, self.last_reward, self.last_is_terminal, False, {})
-                #(np.zeros((512,)), 0.0, True, False, {})
-
-        def reset_callback():
-            return (np.zeros((512,)), {})
-            # return self.env.reset()
-        
-        self.env = DummyDmEnv(
-            observation_space=None, # TODO: spec above
-            action_space=None, # TODO: spec above 
-            step_callback=step_callback,
-            reset_callback=reset_callback,
-        )
 
         self.writer = tfds_backend_writer.TFDSBackendWriter(
                 data_directory="/home/ubuntu/open-x-embodiment/playground_ds",
@@ -201,10 +98,7 @@ class DatasetRecorder(Node):
                 max_episodes_per_file=1,
                 ds_config=dataset_config)
 
-        self.envlogger = envlogger.EnvLogger(
-            self.env,
-            backend = self.writer
-        )
+
         self.subscription = self.create_subscription(
             Step, "step_topic", self.listener_callback, 10
         )
