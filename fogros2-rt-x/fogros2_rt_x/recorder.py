@@ -38,7 +38,7 @@ from rclpy.node import Node
 from .dataset_utils import *
 from fogros2_rt_x_msgs.msg import Step, Observation, Action
 import envlogger
-
+from envlogger import step_data
 import tensorflow_datasets as tfds
 from envlogger.backends import tfds_backend_writer
 
@@ -137,14 +137,14 @@ class DummyDmEnv():
     def reward_spec(self):
         return specs.Array(
             shape=(),
-            dtype=np.float64,
+            dtype=np.float32,
             name='reward',
         )
 
     def discount_spec(self):
         return specs.Array(
             shape=(),
-            dtype=np.float64,
+            dtype=np.float32,
             name='discount',
         )
 
@@ -153,47 +153,112 @@ class DatasetRecorder(Node):
     def __init__(self):
         super().__init__("fogros2_rt_x_recorder")
 
-        dataset_config = tfds.rlds.rlds_base.DatasetConfig(
-            name='bridge',
-            observation_info=tfds.features.FeaturesDict({
+        self.observation_spec = tfds.features.FeaturesDict({
                         # 'image': tfds.features.Image(shape=(480, 640, 3), dtype=tf.uint8),
                         'natural_language_embedding': tfds.features.Tensor(shape=(512,), dtype=tf.float32),
                         # 'natural_language_instruction': tf.string,
                         'state': tfds.features.Tensor(shape=(7,), dtype=tf.float32),
-                    }),
-            action_info=tfds.features.FeaturesDict({
+                    })
+        self.action_spec = tfds.features.FeaturesDict({
                         # 'open_gripper': tf.bool,
                         'rotation_delta':  tfds.features.Tensor(shape=(3,), dtype=tf.float32),
                         # 'terminate_episode': tf.float32,
                         'world_vector': tfds.features.Tensor(shape=(3,), dtype=tf.float32),
-                    }),
-            reward_info=tf.float32,
-            discount_info=tf.float32,
+                    })
+        dataset_config = tfds.rlds.rlds_base.DatasetConfig(
+            name='bridge',
+            observation_info=self.observation_spec,
+            action_info=self.action_spec,
+            reward_info=tf.float64,
+            discount_info=tf.float64,
             step_metadata_info={'is_first': tf.bool, 'is_last': tf.bool, 'is_terminal': tf.bool})
+        
+        self.last_action = None 
+        self.last_observation = None 
+        self.last_reward = 0.0
+        self.last_is_terminal = False
 
-        env = DummyDmEnv(
-            observation_space=None,
-            action_space=None,
-            step_callback=None,
-            reset_callback=None,
+        def step_callback(action):
+            # return value is 
+            # observation, reward, is_terminal, is_truncated, info
+            return (self.last_observation, self.last_reward, self.last_is_terminal, False, {})
+                #(np.zeros((512,)), 0.0, True, False, {})
+
+        def reset_callback():
+            return (np.zeros((512,)), {})
+            # return self.env.reset()
+        
+        self.env = DummyDmEnv(
+            observation_space=None, # TODO: spec above
+            action_space=None, # TODO: spec above 
+            step_callback=step_callback,
+            reset_callback=reset_callback,
         )
-        self.envlogger = envlogger.EnvLogger(
-            env,
-            backend = tfds_backend_writer.TFDSBackendWriter(
+
+        self.writer = tfds_backend_writer.TFDSBackendWriter(
                 data_directory="/home/ubuntu/open-x-embodiment/playground_ds",
                 split_name='train',
-                max_episodes_per_file=500,
-                ds_config=dataset_config),
+                max_episodes_per_file=1,
+                ds_config=dataset_config)
+
+        self.envlogger = envlogger.EnvLogger(
+            self.env,
+            backend = self.writer
         )
         self.subscription = self.create_subscription(
             Step, "step_topic", self.listener_callback, 10
         )
         self.subscription  # prevent unused variable warning
 
+    def convert_ros2_msg_to_tf_feature(self, ros2_msg):
+        observation = dict()
+        action = dict()
+        #TODO: assume type conversion here
+        for k, v in self.observation_spec.items():
+            observation[k] = list(getattr(ros2_msg.observation, k))
+        for k, v in self.action_spec.items():
+            action[k] = list(getattr(ros2_msg.action, k))
+        reward = float(ros2_msg.reward)
+        discount = 1.0 #ros2_msg.discount
+        is_first = ros2_msg.is_first
+        is_last = ros2_msg.is_last
+        is_terminal = ros2_msg.is_terminal
+        return observation, action, reward, discount, is_first, is_last, is_terminal
+    
     def listener_callback(self, step_msg):
         self.get_logger().warning(
-            f"Received step: {step_msg}"
+            f"Received step: {str(step_msg)[:100]}"
         )
+
+        self.last_observation, self.last_action, self.last_reward, discount, is_first, is_last, self.last_is_terminal = self.convert_ros2_msg_to_tf_feature(step_msg)
+        # self.envlogger.step(
+        #     self.last_action
+        # )
+        timestep = dm_env.TimeStep(
+            step_type=dm_env.StepType.FIRST if is_first else dm_env.StepType.MID,
+            reward=self.last_reward,
+            #TODO: support discount
+            discount=discount,
+            observation=self.last_observation,
+        )
+
+        data = step_data.StepData(timestep = timestep, 
+                                  action = self.last_action, 
+                                  custom_data = None)
+        if is_first:
+            self.writer.record_step(data, is_new_episode=True)
+        else:
+            self.writer.record_step(data, is_new_episode=False)
+        
+
+
+        # self.envlogger.log_step(
+        #     observation=step_msg.observation,
+        #     action=step_msg.action,
+        #     reward=step_msg.reward,
+        #     discount=step_msg.discount,
+        #     step_metadata=step_msg.step_metadata,
+        # )
 
 
 def main(args=None):

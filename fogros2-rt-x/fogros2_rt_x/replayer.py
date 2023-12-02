@@ -89,13 +89,15 @@ class DatasetReplayer(Node):
         self.logger = self.get_logger()
         self.logger.info("Loading Dataset " + str(get_dataset_info(["bridge"])))
 
-        timer_period = 2  # seconds
+        timer_period = 10  # seconds
         self.create_timer(timer_period, self.timer_callback)
+        self.episode = next(iter(self.dataset))
 
     def timer_callback(self):
-        episode = next(iter(self.dataset))
-        msg = tf_step_to_ros2_msg(next(iter(episode['steps'])))
-        self.publisher.publish(msg)
+        for step in self.episode['steps']:
+            # msg = tf_step_to_ros2_msg(next(iter(self.episode['steps'])))
+            msg = tf_step_to_ros2_msg(step)
+            self.publisher.publish(msg)
 
 
 def main(args=None):
