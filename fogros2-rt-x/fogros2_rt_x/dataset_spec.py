@@ -1,6 +1,7 @@
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
+from fogros2_rt_x_msgs.msg import Step, Observation, Action
 
 def tf_feature_to_ros_msg_definition(name, feature):
     """
@@ -40,16 +41,43 @@ def ros2_attribute_to_tf_feature(ros2_attribute, tf_feature):
     any: The TensorFlow feature.
     """
     if isinstance(tf_feature, tfds.features.Image):
-        return ros2_attribute
+        return ros2_attribute.numpy()
     elif isinstance(tf_feature, tfds.features.Text):
-        return ros2_attribute
+        return ros2_attribute.numpy()
     elif isinstance(tf_feature, tfds.features.Scalar):
-        return ros2_attribute
+        return ros2_attribute.numpy()
     elif isinstance(tf_feature, tfds.features.Tensor):
-        return list(ros2_attribute)
+        return ros2_attribute.numpy()
     else:
         raise NotImplementedError(f'feature type {type(tf_feature)} for {tf_feature} not implemented')
 
+def cast_tensor_to_class_type(tensor, class_type):
+    return class_type(tensor.numpy())
+
+def tf_tensor_to_ros2_attribute(tensor, spec_attribute, ros2_type): # aka in numpy
+    """
+    This function converts TensorFlow tensors to ROS (Robot Operating System) message attributes.
+
+    Parameters:
+    tensor (tf.Tensor): The TensorFlow tensor to be converted.
+    ros2_attribute (any): The ROS attribute to be converted.
+
+    Returns:
+    any: The ROS attribute.
+    """
+    print(type(spec_attribute), spec_attribute, ros2_type)
+    if isinstance(spec_attribute, tfds.features.Image):
+        return tensor
+    elif isinstance(spec_attribute, tfds.features.Text):
+        return tensor
+    elif isinstance(spec_attribute, tfds.features.Scalar):
+        return cast_tensor_to_class_type(tensor, ros2_type)
+    elif isinstance(spec_attribute, tfds.features.Tensor):
+        # TODO: need to handle 2D array here
+        
+        return [float(x) for x in tensor.numpy()] #cast_tensor_to_class_type(tensor, ros2_type)
+    else:
+        raise NotImplementedError(f'feature type {type(spec_attribute)} for {spec_attribute} not implemented')
 
 class DatasetFeatureSpec:
     def __init__(self, 
@@ -124,16 +152,29 @@ class DatasetFeatureSpec:
 
         return observation, action, step
 
-    def convert_tf_feature_to_ros2_msg(self, observation, action, step):
+    def convert_tf_step_to_ros2_msg(self, step, action, observation):
         ros2_msg = Step()
         ros2_msg.observation = Observation()
         ros2_msg.action = Action()
-        for k, v in observation.items():
-            setattr(ros2_msg.observation, k, v)
-        for k, v in action.items():
-            setattr(ros2_msg.action, k, v)
-        for k, v in step.items():
-            setattr(ros2_msg, k, v)
+        for k, v in self.step_spec.items():
+            # TODO: need to handle missing info
+            if k == "discount":
+                continue 
+            setattr(ros2_msg, k, tf_tensor_to_ros2_attribute(step[k], v, type(getattr(ros2_msg, k))))
+        for k, v in self.observation_spec.items():
+            setattr(ros2_msg.observation, k, tf_tensor_to_ros2_attribute(observation[k], v, type(getattr(ros2_msg.observation, k))))
+        for k, v in self.action_spec.items():
+            setattr(ros2_msg.action, k, tf_tensor_to_ros2_attribute(action[k], v, type(getattr(ros2_msg.action, k))))
+        # for k, v in observation.items():
+        #     # setattr(ros2_msg.observation, k, v)
+        #     setattr(ros2_msg.observation, k, tf_tensor_to_ros2_attribute(v, getattr(ros2_msg.observation, k)))
+        # for k, v in action.items():
+        #     # setattr(ros2_msg.action, k, v)
+        #     setattr(ros2_msg.action, k, tf_tensor_to_ros2_attribute(v, getattr(ros2_msg.action, k)))
+        # for k, v in step.items():
+        #     # setattr(ros2_msg, k, v)
+        #     setattr(ros2_msg, k, tf_tensor_to_ros2_attribute(v, getattr(ros2_msg, k)))
+
         return ros2_msg
 
 

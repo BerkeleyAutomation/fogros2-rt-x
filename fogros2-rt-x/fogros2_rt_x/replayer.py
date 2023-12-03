@@ -37,6 +37,8 @@ import rclpy
 from rclpy.node import Node
 from .dataset_utils import *
 from fogros2_rt_x_msgs.msg import Step, Observation, Action
+from .dataset_spec import DatasetFeatureSpec
+from .dataset_conf import *
 
 class DatasetReplayer(Node):
     def __init__(self, dataset_name):
@@ -49,12 +51,22 @@ class DatasetReplayer(Node):
 
         timer_period = 10  # seconds
         self.create_timer(timer_period, self.timer_callback)
+
+        self.feature_spec = DatasetFeatureSpec(
+            observation_spec=OBSERVATION_SPEC,
+            action_spec=ACTION_SPEC,
+            step_spec=STEP_SPEC
+        )
+
         self.episode = next(iter(self.dataset))
 
     def timer_callback(self):
         for step in self.episode['steps']:
             # msg = tf_step_to_ros2_msg(next(iter(self.episode['steps'])))
-            msg = tf_step_to_ros2_msg(step)
+            msg = self.feature_spec.convert_tf_step_to_ros2_msg(
+                step, 
+                step["action"], 
+                step["observation"])
             self.publisher.publish(msg)
 
 
