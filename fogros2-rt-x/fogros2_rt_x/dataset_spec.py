@@ -29,6 +29,16 @@ def tf_feature_to_ros_msg_definition(name, feature):
         raise NotImplementedError(f'feature type {type(feature)} for {feature} not implemented')
 
 def ros2_attribute_to_tf_feature(ros2_attribute, tf_feature):
+    """
+    This function converts ROS (Robot Operating System) message attributes to TensorFlow dataset features.
+
+    Parameters:
+    ros2_attribute (any): The ROS attribute to be converted.
+    tf_feature (tfds.core.dataset_info.FeatureConnector): The TensorFlow feature to be converted.
+
+    Returns:
+    any: The TensorFlow feature.
+    """
     if isinstance(tf_feature, tfds.features.Image):
         return ros2_attribute
     elif isinstance(tf_feature, tfds.features.Text):
@@ -114,4 +124,58 @@ class DatasetFeatureSpec:
 
         return observation, action, step
 
+    def convert_tf_feature_to_ros2_msg(self, observation, action, step):
+        ros2_msg = Step()
+        ros2_msg.observation = Observation()
+        ros2_msg.action = Action()
+        for k, v in observation.items():
+            setattr(ros2_msg.observation, k, v)
+        for k, v in action.items():
+            setattr(ros2_msg.action, k, v)
+        for k, v in step.items():
+            setattr(ros2_msg, k, v)
+        return ros2_msg
+
+
+
+# def cast_tensor_to_class_type(tensor, class_type):
+#     return class_type(tensor.numpy())
+
+# def cast_value_to_class_type(tensor, class_type):
+#     return class_type(tensor)
+
+# def tf_step_to_ros2_msg(step):
+#     ros2_step = Step()
+#     ros2_step.observation = Observation()
+#     ros2_step.action = Action()
+#     ros2_step.reward = cast_tensor_to_class_type(step['reward'], type(ros2_step.reward))
+#     ros2_step.is_first = cast_tensor_to_class_type(step['is_first'], type(ros2_step.is_first)) 
+#     ros2_step.is_last = cast_tensor_to_class_type(step['is_last'], type(ros2_step.is_last)) 
+#     ros2_step.is_terminal = cast_tensor_to_class_type(step['is_terminal'], type(ros2_step.is_terminal)) 
+#     for k, v in step['observation'].items():
+#         if k == 'image':
+#             continue
+#         field_type = type(getattr(ros2_step.observation, k))
+#         print(field_type, k, str(field_type))
+#         if str(field_type) == "<class 'array.array'>":
+#             # TODO: assume all float32
+#             setattr(ros2_step.observation, k, [float(x) for x in v.numpy()])
+#         elif str(field_type) == "<class 'str'>":
+#             setattr(ros2_step.observation, k, str(v.numpy()))
+#         else:
+#             setattr(ros2_step.observation, k, cast_value_to_class_type(v, field_type))
+#         # print(type(getattr(ros2_step.observation, k)), v.numpy(), type(v.numpy()[0]))
+#         # setattr(ros2_step.observation, k, [float(x) for x in v.numpy()])
+#         # setattr(ros2_step.observation, k, cast_value_to_class_type(v, getattr(ros2_step.observation, k)))
+#     for k, v in step['action'].items():
+#         field_type = type(getattr(ros2_step.action, k))
+#         print(field_type, k, str(field_type))
+#         if str(field_type) == "<class 'array.array'>":
+#             # TODO: assume all float32
+#             setattr(ros2_step.action, k, [float(x) for x in v.numpy()])
+#         elif str(field_type) == "<class 'str'>":
+#             setattr(ros2_step.action, k, str(v.numpy()))
+#         else:
+#             setattr(ros2_step.action, k, cast_value_to_class_type(v, field_type))
+#     return ros2_step
 

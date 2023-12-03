@@ -42,7 +42,7 @@ from envlogger import step_data
 import tensorflow_datasets as tfds
 from envlogger.backends import tfds_backend_writer
 from .dataset_spec import DatasetFeatureSpec
-
+from .dataset_conf import *
 # code borrowed from https://github.com/rail-berkeley/oxe_envlogger/blob/main/oxe_envlogger/dm_env.py
 import dm_env
 
@@ -51,29 +51,13 @@ class DatasetRecorder(Node):
     def __init__(self):
         super().__init__("fogros2_rt_x_recorder")
 
-        self.observation_spec = tfds.features.FeaturesDict({
-                        # 'image': tfds.features.Image(shape=(480, 640, 3), dtype=tf.uint8),
-                        'natural_language_embedding': tfds.features.Tensor(shape=(512,), dtype=tf.float32),
-                        # 'natural_language_instruction': tf.string,
-                        'state': tfds.features.Tensor(shape=(7,), dtype=tf.float32),
-                    })
-        self.action_spec = tfds.features.FeaturesDict({
-                        'open_gripper': tfds.features.Scalar(dtype=tf.bool),
-                        'rotation_delta':  tfds.features.Tensor(shape=(3,), dtype=tf.float32),
-                        # 'terminate_episode': tfds.features.Scalar(dtype=tf.float32),
-                        'world_vector': tfds.features.Tensor(shape=(3,), dtype=tf.float32),
-                    })
+        self.observation_spec = OBSERVATION_SPEC
+        self.action_spec = ACTION_SPEC
 
         self.feature_spec = DatasetFeatureSpec(
             observation_spec=self.observation_spec,
             action_spec=self.action_spec,
-            step_spec={
-                'reward': tfds.features.Scalar(dtype=tf.float64),
-                'discount': tfds.features.Scalar(dtype=tf.float64),
-                'is_first': tfds.features.Scalar(dtype=tf.bool),
-                'is_last': tfds.features.Scalar(dtype=tf.bool),
-                'is_terminal': tfds.features.Scalar(dtype=tf.bool),
-            }
+            step_spec=STEP_SPEC
         )
         print(self.feature_spec.spec_to_ros2_message_definition(self.feature_spec.observation_spec))
         print(self.feature_spec.spec_to_ros2_message_definition(self.feature_spec.action_spec))
