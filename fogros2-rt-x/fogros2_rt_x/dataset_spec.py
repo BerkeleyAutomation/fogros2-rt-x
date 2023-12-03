@@ -3,7 +3,20 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 def tf_feature_to_ros_msg_definition(name, feature):
-    
+    """
+    This function converts TensorFlow dataset features to ROS (Robot Operating System) message definitions.
+
+    Parameters:
+    name (str): The name of the feature.
+    feature (tfds.core.dataset_info.FeatureConnector): The TensorFlow feature to be converted.
+
+    Returns:
+    str: The ROS message definition.
+
+    Raises:
+    NotImplementedError: If the feature type is not implemented.
+    """
+
     if isinstance(feature, tfds.features.Image):
         return f'sensor_msgs/Image {name}'
     elif isinstance(feature, tfds.features.Text):
@@ -14,6 +27,19 @@ def tf_feature_to_ros_msg_definition(name, feature):
         return f'{feature.np_dtype.name}[] {name}'
     else:
         raise NotImplementedError(f'feature type {type(feature)} for {feature} not implemented')
+
+def ros2_attribute_to_tf_feature(ros2_attribute, tf_feature):
+    if isinstance(tf_feature, tfds.features.Image):
+        return ros2_attribute
+    elif isinstance(tf_feature, tfds.features.Text):
+        return ros2_attribute
+    elif isinstance(tf_feature, tfds.features.Scalar):
+        return ros2_attribute
+    elif isinstance(tf_feature, tfds.features.Tensor):
+        return list(ros2_attribute)
+    else:
+        raise NotImplementedError(f'feature type {type(tf_feature)} for {tf_feature} not implemented')
+
 
 class DatasetFeatureSpec:
     def __init__(self, 
@@ -71,4 +97,21 @@ class DatasetFeatureSpec:
                 'is_last': self.step_spec['is_last'], 
                 'is_terminal': self.step_spec['is_terminal'],
             }
-            )
+        )
+
+
+    def convert_ros2_msg_to_step_tuple(self, ros2_msg):
+        observation = dict()
+        action = dict()
+        step = dict()
+
+        for k, v in self.observation_spec.items():
+            observation[k] = ros2_attribute_to_tf_feature(getattr(ros2_msg.observation, k), v)
+        for k, v in self.action_spec.items():
+            action[k] = ros2_attribute_to_tf_feature(getattr(ros2_msg.action, k), v)
+        for k, v in self.step_spec.items():
+            step[k] = ros2_attribute_to_tf_feature(getattr(ros2_msg, k), v)
+
+        return observation, action, step
+
+

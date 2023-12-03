@@ -5,3 +5,4 @@ bool is_terminal
 Action action 
 Observation observation
 float32 reward
+float64 discount 1.0

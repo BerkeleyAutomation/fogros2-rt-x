@@ -60,7 +60,7 @@ class DatasetRecorder(Node):
         self.action_spec = tfds.features.FeaturesDict({
                         'open_gripper': tfds.features.Scalar(dtype=tf.bool),
                         'rotation_delta':  tfds.features.Tensor(shape=(3,), dtype=tf.float32),
-                        'terminate_episode': tfds.features.Scalar(dtype=tf.float32),
+                        # 'terminate_episode': tfds.features.Scalar(dtype=tf.float32),
                         'world_vector': tfds.features.Tensor(shape=(3,), dtype=tf.float32),
                     })
 
@@ -78,7 +78,7 @@ class DatasetRecorder(Node):
         print(self.feature_spec.spec_to_ros2_message_definition(self.feature_spec.observation_spec))
         print(self.feature_spec.spec_to_ros2_message_definition(self.feature_spec.action_spec))
         print(self.feature_spec.spec_to_ros2_message_definition(self.feature_spec.step_spec))
-        dataset_config = self.feature_spec.to_dataset_config('bridge')
+        self.dataset_config = self.feature_spec.to_dataset_config('bridge')
         # tfds.rlds.rlds_base.DatasetConfig(
         #     name='bridge',
         #     observation_info=self.observation_spec,
@@ -89,14 +89,13 @@ class DatasetRecorder(Node):
         
         self.last_action = None 
         self.last_observation = None 
-        self.last_reward = 0.0
-        self.last_is_terminal = False
+        self.last_step = None
 
         self.writer = tfds_backend_writer.TFDSBackendWriter(
                 data_directory="/home/ubuntu/open-x-embodiment/playground_ds",
                 split_name='train',
                 max_episodes_per_file=1,
-                ds_config=dataset_config)
+                ds_config=self.dataset_config)
 
 
         self.subscription = self.create_subscription(
@@ -104,42 +103,37 @@ class DatasetRecorder(Node):
         )
         self.subscription  # prevent unused variable warning
 
-    def convert_ros2_msg_to_tf_feature(self, ros2_msg):
-        observation = dict()
-        action = dict()
-        #TODO: assume type conversion here
-        for k, v in self.observation_spec.items():
-            observation[k] = list(getattr(ros2_msg.observation, k))
-        for k, v in self.action_spec.items():
-            action[k] = list(getattr(ros2_msg.action, k))
-        reward = float(ros2_msg.reward)
-        discount = 1.0 #ros2_msg.discount
-        is_first = ros2_msg.is_first
-        is_last = ros2_msg.is_last
-        is_terminal = ros2_msg.is_terminal
-        return observation, action, reward, discount, is_first, is_last, is_terminal
-    
+
     def listener_callback(self, step_msg):
         self.get_logger().warning(
             f"Received step: {str(step_msg)[:100]}"
         )
 
-        self.last_observation, self.last_action, self.last_reward, discount, is_first, is_last, self.last_is_terminal = self.convert_ros2_msg_to_tf_feature(step_msg)
+        # self.last_observation, self.last_action, self.last_reward, discount, is_first, is_last, self.last_is_terminal = self.convert_ros2_msg_to_tf_feature(step_msg)
         # self.envlogger.step(
         #     self.last_action
         # )
+        self.last_observation, self.last_action, self.last_step = self.feature_spec.convert_ros2_msg_to_step_tuple(step_msg)
+        
+        if self.last_step["is_last"]:
+            step_type = dm_env.StepType.LAST
+        elif self.last_step["is_first"]:
+            step_type = dm_env.StepType.FIRST
+        else:
+            step_type = dm_env.StepType.MID
+        
         timestep = dm_env.TimeStep(
-            step_type=dm_env.StepType.FIRST if is_first else dm_env.StepType.MID,
-            reward=self.last_reward,
-            #TODO: support discount
-            discount=discount,
+            step_type=step_type,
+            reward=self.last_step["reward"],
+            discount=self.last_step["discount"],
             observation=self.last_observation,
         )
 
         data = step_data.StepData(timestep = timestep, 
                                   action = self.last_action, 
                                   custom_data = None)
-        if is_first:
+        
+        if self.last_step["is_first"]:
             self.writer.record_step(data, is_new_episode=True)
         else:
             self.writer.record_step(data, is_new_episode=False)
