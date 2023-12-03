@@ -2,6 +2,7 @@
 import tensorflow as tf
 import tensorflow_datasets as tfds
 from fogros2_rt_x_msgs.msg import Step, Observation, Action
+from cv_bridge import CvBridge
 
 def tf_feature_to_ros_msg_definition(name, feature):
     """
@@ -41,7 +42,9 @@ def ros2_attribute_to_tf_feature(ros2_attribute, tf_feature):
     any: The TensorFlow feature.
     """
     if isinstance(tf_feature, tfds.features.Image):
-        return ros2_attribute.numpy()
+        bridge = CvBridge()
+        image_message = bridge.cv2_to_imgmsg(ros2_attribute.numpy())
+        return image_message
     elif isinstance(tf_feature, tfds.features.Text):
         return ros2_attribute.numpy()
     elif isinstance(tf_feature, tfds.features.Scalar):
@@ -67,7 +70,11 @@ def tf_tensor_to_ros2_attribute(tensor, spec_attribute, ros2_type): # aka in num
     """
     print(type(spec_attribute), spec_attribute, ros2_type)
     if isinstance(spec_attribute, tfds.features.Image):
-        return tensor
+        bridge = CvBridge()
+        converted_tensor = tensor 
+        converted_msg = bridge.cv2_to_imgmsg(converted_tensor.numpy())
+        # print(converted_msg)
+        return converted_msg
     elif isinstance(spec_attribute, tfds.features.Text):
         return tensor
     elif isinstance(spec_attribute, tfds.features.Scalar):
@@ -160,11 +167,21 @@ class DatasetFeatureSpec:
             # TODO: need to handle missing info
             if k == "discount":
                 continue 
-            setattr(ros2_msg, k, tf_tensor_to_ros2_attribute(step[k], v, type(getattr(ros2_msg, k))))
+            # setattr(ros2_msg, k, tf_tensor_to_ros2_attribute(step[k], v, type(getattr(ros2_msg, k))))
+            ros2_msg_type = type(getattr(ros2_msg, k))
+            converted_value_to_ros2 = tf_tensor_to_ros2_attribute(step[k], v, ros2_msg_type)
+            # print(converted_value_to_ros2, ros2_msg_type)
+            setattr(ros2_msg, k, converted_value_to_ros2)
         for k, v in self.observation_spec.items():
-            setattr(ros2_msg.observation, k, tf_tensor_to_ros2_attribute(observation[k], v, type(getattr(ros2_msg.observation, k))))
+            ros2_msg_type = type(getattr(ros2_msg.observation, k))
+            converted_value_to_ros2 = tf_tensor_to_ros2_attribute(observation[k], v, ros2_msg_type)
+            setattr(ros2_msg.observation, k, converted_value_to_ros2)
         for k, v in self.action_spec.items():
-            setattr(ros2_msg.action, k, tf_tensor_to_ros2_attribute(action[k], v, type(getattr(ros2_msg.action, k))))
+            ros2_msg_type = type(getattr(ros2_msg.action, k))
+            converted_value_to_ros2 = tf_tensor_to_ros2_attribute(action[k], v, ros2_msg_type)
+            # print(converted_value_to_ros2, ros2_msg_type)
+            setattr(ros2_msg.action, k, converted_value_to_ros2)
+            
         # for k, v in observation.items():
         #     # setattr(ros2_msg.observation, k, v)
         #     setattr(ros2_msg.observation, k, tf_tensor_to_ros2_attribute(v, getattr(ros2_msg.observation, k)))

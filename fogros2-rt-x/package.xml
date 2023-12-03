@@ -13,6 +13,9 @@
   <test_depend>python3-pytest</test_depend>
 
   <depend>fogros2_rt_x_msgs</depend>
+  <depend>cv_bridge</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
 
   <export>
     <build_type>ament_python</build_type>
