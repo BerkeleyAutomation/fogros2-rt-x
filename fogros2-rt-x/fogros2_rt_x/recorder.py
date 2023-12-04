@@ -62,7 +62,11 @@ class DatasetRecorder(Node):
         print(self.feature_spec.spec_to_ros2_message_definition(self.feature_spec.observation_spec))
         print(self.feature_spec.spec_to_ros2_message_definition(self.feature_spec.action_spec))
         print(self.feature_spec.spec_to_ros2_message_definition(self.feature_spec.step_spec))
-        self.dataset_config = self.feature_spec.to_dataset_config('bridge')
+        self.dataset_config = self.feature_spec.to_dataset_config(
+            dataset_name = DATASET_NAME
+        )
+
+        # self.cloud_manager = 
         # tfds.rlds.rlds_base.DatasetConfig(
         #     name='bridge',
         #     observation_info=self.observation_spec,
@@ -76,7 +80,7 @@ class DatasetRecorder(Node):
         self.last_step = None
 
         self.writer = tfds_backend_writer.TFDSBackendWriter(
-                data_directory=LOCAL_SAVE_PATH,
+                data_directory=SAVE_PATH,
                 max_episodes_per_file=1,
                 ds_config=self.dataset_config)
 
