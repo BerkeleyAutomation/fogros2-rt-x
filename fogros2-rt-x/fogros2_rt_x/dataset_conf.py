@@ -35,10 +35,19 @@
 import tensorflow_datasets as tfds
 import tensorflow as tf
 
+# the name of the dataset
 DATASET_NAME = "bridge"
+# TODO: other information such as citation
+
+# the path can be a local directory or a google cloud storage bucket
 SAVE_PATH = "/home/ubuntu/open-x-embodiment/playground_ds"
 # "gs://test-fogros-rtx-example"
 
+# this is used for bigquery project metadata storage
+# the project should be accessible through google cloud account
+BIG_QUERY_PROJECT = "fogros2-rt-x"
+
+# observation specification (field name and field type)
 OBSERVATION_SPEC = tfds.features.FeaturesDict(
     {
         "image": tfds.features.Image(shape=(480, 640, 3), dtype=tf.uint8),
@@ -52,6 +61,7 @@ OBSERVATION_SPEC = tfds.features.FeaturesDict(
     }
 )
 
+# action specification (field name and field type)
 ACTION_SPEC = tfds.features.FeaturesDict(
     {
         "open_gripper": tfds.features.Scalar(dtype=tf.bool),
@@ -61,6 +71,7 @@ ACTION_SPEC = tfds.features.FeaturesDict(
     }
 )
 
+# step specification (field name and field type)
 STEP_SPEC = {
     "reward": tfds.features.Scalar(dtype=tf.float64),
     "discount": tfds.features.Scalar(dtype=tf.float64),

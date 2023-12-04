@@ -7,7 +7,11 @@ This repository contains the code for the fogros2-rt-x project. It is designed t
 ### Steps
 
 1. Install ROS following the instructions on the official ROS website.
-2. Install TensorFlow dependencies.
+2. Install python dependencies.
+```
+pip install google-cloud-bigquery tensorflow
+```
+Don't use conda environment, which does not work well with ROS/ROS2.
 3. Compile the repo
 ```
 colcon build
