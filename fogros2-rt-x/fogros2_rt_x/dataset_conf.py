@@ -5,7 +5,7 @@ import tensorflow as tf
 OBSERVATION_SPEC = tfds.features.FeaturesDict({
                 'image': tfds.features.Image(shape=(480, 640, 3), dtype=tf.uint8),
                 'natural_language_embedding': tfds.features.Tensor(shape=(512,), dtype=tf.float32),
-                'natural_language_instruction': tf.string,
+                'natural_language_instruction': tfds.features.Tensor(shape=(40,), dtype=tf.string),
                 'state': tfds.features.Tensor(shape=(7,), dtype=tf.float32),
             })
 

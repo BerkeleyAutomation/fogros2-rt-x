@@ -43,14 +43,14 @@ def ros2_attribute_to_tf_feature(ros2_attribute, tf_feature):
     """
     if isinstance(tf_feature, tfds.features.Image):
         bridge = CvBridge()
-        image_message = bridge.cv2_to_imgmsg(ros2_attribute.numpy())
+        image_message = bridge.imgmsg_to_cv2(ros2_attribute)
         return image_message
     elif isinstance(tf_feature, tfds.features.Text):
-        return ros2_attribute.numpy()
+        return ros2_attribute
     elif isinstance(tf_feature, tfds.features.Scalar):
-        return ros2_attribute.numpy()
+        return ros2_attribute
     elif isinstance(tf_feature, tfds.features.Tensor):
-        return ros2_attribute.numpy()
+        return list(ros2_attribute)
     else:
         raise NotImplementedError(f'feature type {type(tf_feature)} for {tf_feature} not implemented')
 
@@ -73,16 +73,27 @@ def tf_tensor_to_ros2_attribute(tensor, spec_attribute, ros2_type): # aka in num
         bridge = CvBridge()
         converted_tensor = tensor 
         converted_msg = bridge.cv2_to_imgmsg(converted_tensor.numpy())
-        # print(converted_msg)
         return converted_msg
     elif isinstance(spec_attribute, tfds.features.Text):
-        return tensor
+        return str(tensor)
     elif isinstance(spec_attribute, tfds.features.Scalar):
         return cast_tensor_to_class_type(tensor, ros2_type)
     elif isinstance(spec_attribute, tfds.features.Tensor):
         # TODO: need to handle 2D array here
-        
-        return [float(x) for x in tensor.numpy()] #cast_tensor_to_class_type(tensor, ros2_type)
+        tensor_dtype = tensor.dtype
+        if tensor_dtype == tf.float32 or tensor_dtype == tf.float64:
+            return [float(x) for x in tensor.numpy()]
+        elif tensor_dtype == tf.int32 or tensor_dtype == tf.int64:
+            return [int(x) for x in tensor.numpy()]
+        elif tensor_dtype == tf.bool:
+            return [bool(x) for x in tensor.numpy()]
+        elif tensor_dtype == tf.string:
+            return str(tensor.numpy())
+        else:
+            try:
+                return [tensor_dtype(x) for x in tensor.numpy()]
+            except Exception as e:
+                raise NotImplementedError(f'feature type {type(spec_attribute)} for {spec_attribute} not implemented')
     else:
         raise NotImplementedError(f'feature type {type(spec_attribute)} for {spec_attribute} not implemented')
 
