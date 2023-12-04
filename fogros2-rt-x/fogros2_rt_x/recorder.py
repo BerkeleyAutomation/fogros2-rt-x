@@ -44,7 +44,8 @@ from envlogger.backends import tfds_backend_writer
 from .dataset_spec import DatasetFeatureSpec
 from .dataset_conf import *
 from .backend_writer import CloudBackendWriter
-
+import dm_env
+from .database_connector import BaseDataBaseConnector, BigQueryConnector
 
 class DatasetRecorder(Node):
     """
@@ -92,14 +93,17 @@ class DatasetRecorder(Node):
         self.last_observation = None
         self.last_step = None
 
+        self.metadata_db = BaseDataBaseConnector()
+
         self.writer = CloudBackendWriter(
             data_directory=SAVE_PATH,
             max_episodes_per_file=1,
             ds_config=self.dataset_config,
+            metadata_database=self.metadata_db,
         )
 
         self.subscription = self.create_subscription(
-            Step, "step_topic", self.listener_callback, 10
+            Step, "step_info", self.listener_callback, 10
         )
         self.subscription  # prevent unused variable warning
 

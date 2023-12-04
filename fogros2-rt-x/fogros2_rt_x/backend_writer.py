@@ -64,6 +64,7 @@ DatasetConfig = tfds.rlds.rlds_base.DatasetConfig
 @dataclasses.dataclass
 class Episode(object):
     """Episode that is being constructed."""
+
     prev_step: step_data.StepData
     steps: Optional[List[rlds_utils.Step]] = None
     metadata: Optional[Dict[str, Any]] = None
@@ -82,21 +83,23 @@ class Episode(object):
         if self.metadata is None:
             self.metadata = {}
 
-        return {'steps': self.steps + [last_step], **self.metadata}
+        return {"steps": self.steps + [last_step], **self.metadata}
 
 
 class CloudBackendWriter(backend_writer.BackendWriter):
     """Backend that writes trajectory data in TFDS format (and RLDS structure)."""
 
-
-    def __init__(self,
-                             data_directory: str,
-                             ds_config: tfds.rlds.rlds_base.DatasetConfig,
-                             max_episodes_per_file: int = 1000,
-                             split_name: Optional[str] = None,
-                             version: str = '0.0.1',
-                             store_ds_metadata: bool = False,
-                             **base_kwargs):
+    def __init__(
+        self,
+        data_directory: str,
+        ds_config: tfds.rlds.rlds_base.DatasetConfig,
+        max_episodes_per_file: int = 1000,
+        split_name: Optional[str] = None,
+        version: str = "0.0.1",
+        store_ds_metadata: bool = False,
+        metadata_database = None, 
+        **base_kwargs
+    ):
         """Constructor.
 
         Args:
@@ -111,48 +114,51 @@ class CloudBackendWriter(backend_writer.BackendWriter):
         """
         super().__init__(**base_kwargs)
         if not split_name:
-            split_name = 'train'
+            split_name = "train"
         ds_identity = tfds.core.dataset_info.DatasetIdentity(
-                name=ds_config.name,
-                version=tfds.core.Version(version),
-                data_dir=data_directory,
-                module_name='')
+            name=ds_config.name,
+            version=tfds.core.Version(version),
+            data_dir=data_directory,
+            module_name="",
+        )
         if store_ds_metadata:
             metadata = self._metadata
         else:
             metadata = None
         self._data_directory = data_directory
-        self._ds_info = tfds.rlds.rlds_base.build_info(ds_config, ds_identity,
-                                                                                                     metadata)
-        self._ds_info.set_file_format('tfrecord')
+        self._ds_info = tfds.rlds.rlds_base.build_info(ds_config, ds_identity, metadata)
+        self._ds_info.set_file_format("tfrecord")
 
         self._current_episode = None
 
         self._sequential_writer = tfds.core.SequentialWriter(
-                self._ds_info, max_episodes_per_file)
+            self._ds_info, max_episodes_per_file
+        )
         self._split_name = split_name
         self._sequential_writer.initialize_splits([split_name])
-        logging.info('self._data_directory: %r', self._data_directory)
+        logging.info("self._data_directory: %r", self._data_directory)
 
-        
+        self._metadata_database = metadata_database
 
-    def _gather_episode_metadata(self, data: step_data.StepData) -> Dict[str, Any]:
+    def _gather_episode_metadata(self) -> Dict[str, Any]:
         """Gathers episode metadata from the step data."""
         metadata = {}
-        if data.episode_metadata is not None:
-            metadata.update(data.episode_metadata)
-        if data.episode_id is not None:
-            metadata['episode_id'] = data.episode_id
+        # if data.episode_metadata is not None:
+        #     metadata.update(data.episode_metadata)
+        # if data.episode_id is not None:
+        #     metadata["episode_id"] = data.episode_id
         return metadata
-    
+
     def _write_and_reset_episode(self):
         if self._current_episode is not None:
             self._sequential_writer.add_examples(
-                    {self._split_name: [self._current_episode.get_rlds_episode()]})
+                {self._split_name: [self._current_episode.get_rlds_episode()]}
+            )
+            self.episode_metadata = self._gather_episode_metadata()
+            self._metadata_database.insert(self.episode_metadata)
             self._current_episode = None
 
-    def _record_step(self, data: step_data.StepData,
-                                     is_new_episode: bool) -> None:
+    def _record_step(self, data: step_data.StepData, is_new_episode: bool) -> None:
         """Stores RLDS steps in TFDS format."""
 
         if is_new_episode:
@@ -167,8 +173,9 @@ class CloudBackendWriter(backend_writer.BackendWriter):
         self._current_episode.metadata = data
 
     def close(self) -> None:
-        logging.info('Deleting the backend with data_dir: %r', self._data_directory)
+        logging.info("Deleting the backend with data_dir: %r", self._data_directory)
         self._write_and_reset_episode()
         self._sequential_writer.close_all()
-        logging.info('Done deleting the backend with data_dir: %r',
-                                 self._data_directory)
+        logging.info(
+            "Done deleting the backend with data_dir: %r", self._data_directory
+        )
