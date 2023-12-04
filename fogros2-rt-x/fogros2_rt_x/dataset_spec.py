@@ -236,6 +236,8 @@ class DatasetFeatureSpec:
         ros2_msg.action = Action()
         for k, v in self.step_spec.items():
             if k == "discount":
+                #TODO: currently skip discount because the original dataset
+                # does not have discount
                 continue
             ros2_msg_type = type(getattr(ros2_msg, k))
             converted_value_to_ros2 = tf_tensor_to_ros2_attribute(

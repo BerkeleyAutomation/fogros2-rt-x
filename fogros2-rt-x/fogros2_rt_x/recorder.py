@@ -43,9 +43,7 @@ import tensorflow_datasets as tfds
 from envlogger.backends import tfds_backend_writer
 from .dataset_spec import DatasetFeatureSpec
 from .dataset_conf import *
-
-# code borrowed from https://github.com/rail-berkeley/oxe_envlogger/blob/main/oxe_envlogger/dm_env.py
-import dm_env
+from .backend_writer import CloudBackendWriter
 
 
 class DatasetRecorder(Node):
@@ -94,7 +92,7 @@ class DatasetRecorder(Node):
         self.last_observation = None
         self.last_step = None
 
-        self.writer = tfds_backend_writer.TFDSBackendWriter(
+        self.writer = CloudBackendWriter(
             data_directory=SAVE_PATH,
             max_episodes_per_file=1,
             ds_config=self.dataset_config,
