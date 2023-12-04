@@ -78,11 +78,12 @@ class DatasetRecorder(Node):
 
         self.observation_spec = OBSERVATION_SPEC
         self.action_spec = ACTION_SPEC
+        self.step_spec = STEP_SPEC
 
         self.feature_spec = DatasetFeatureSpec(
             observation_spec=self.observation_spec,
             action_spec=self.action_spec,
-            step_spec=STEP_SPEC,
+            step_spec=self.step_spec,
         )
 
         self.dataset_config = self.feature_spec.to_dataset_config(

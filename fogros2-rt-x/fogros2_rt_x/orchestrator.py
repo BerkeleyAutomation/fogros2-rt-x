@@ -48,118 +48,45 @@ from .dataset_conf import *
 import dm_env
 
 
-class DatasetRecorder(Node):
-    """
-    A class for recording datasets in the fogros2-rt-x package.
-
-    This class is responsible for recording datasets based on the provided observation and action specifications.
-
-    Args:
-        None
-
-    Attributes:
-        observation_spec (ObservationSpec): The specification for the observation.
-        action_spec (ActionSpec): The specification for the action.
-        feature_spec (DatasetFeatureSpec): The specification for the dataset features.
-        dataset_config (DatasetConfig): The configuration for the dataset.
-        last_action (Any): The last recorded action.
-        last_observation (Any): The last recorded observation.
-        last_step (Any): The last recorded step.
-        writer (TFDSBackendWriter): The writer for the dataset.
-        subscription (Subscription): The subscription for receiving step messages.
-
-    Methods:
-        __init__(): Initializes the DatasetRecorder object.
-        listener_callback(step_msg): Callback function for processing step messages.
-    """
-
+class StreamOrchestrator(Node):
+   
     def __init__(self):
-        super().__init__("fogros2_rt_x_recorder")
+        super().__init__("fogros2_rt_x_orchestrator")
 
         self.observation_spec = OBSERVATION_SPEC
         self.action_spec = ACTION_SPEC
+        self.step_spec = STEP_SPEC
 
         self.feature_spec = DatasetFeatureSpec(
             observation_spec=self.observation_spec,
             action_spec=self.action_spec,
-            step_spec=STEP_SPEC,
+            step_spec=self.step_spec,
         )
 
-        self.dataset_config = self.feature_spec.to_dataset_config(
-            dataset_name=DATASET_NAME
-        )
+        # TODO: expand the dataset spec 
+        # subscribe to each individual topics 
+        # figure out how to match it 
+        # reference from Lawrence: 
+        # just grab the image right before the action. https://github.com/rail-berkeley/bridge_data_robot/blob/main/widowx_envs/widowx_envs/base/robot_base_env.py#L280
+        # https://github.com/rail-berkeley/bridge_data_robot/blob/main/widowx_envs/widowx_envs/base/robot_base_env.py#L408
 
-        self.last_action = None
-        self.last_observation = None
-        self.last_step = None
+    def action_callback(self):
+        pass
 
-        self.writer = tfds_backend_writer.TFDSBackendWriter(
-            data_directory=SAVE_PATH,
-            max_episodes_per_file=1,
-            ds_config=self.dataset_config,
-        )
-
-        self.subscription = self.create_subscription(
-            Step, "step_topic", self.listener_callback, 10
-        )
-        self.subscription  # prevent unused variable warning
-
-    def listener_callback(self, step_msg):
-        """
-        Callback function for processing step messages.
-
-        This function is called whenever a step message is received. It converts the step message to a step tuple,
-        records the step data, and updates the dataset writer.
-
-        Args:
-            step_msg (Step): The step message received.
-
-        Returns:
-            None
-        """
-        self.get_logger().warning(f"Received step: {str(step_msg)[:100]}")
-
-        (
-            self.last_observation,
-            self.last_action,
-            self.last_step,
-        ) = self.feature_spec.convert_ros2_msg_to_step_tuple(step_msg)
-
-        if self.last_step["is_last"]:
-            step_type = dm_env.StepType.LAST
-        elif self.last_step["is_first"]:
-            step_type = dm_env.StepType.FIRST
-        else:
-            step_type = dm_env.StepType.MID
-
-        timestep = dm_env.TimeStep(
-            step_type=step_type,
-            reward=self.last_step["reward"],
-            discount=self.last_step["discount"],
-            observation=self.last_observation,
-        )
-
-        data = step_data.StepData(
-            timestep=timestep, action=self.last_action, custom_data=None
-        )
-
-        if self.last_step["is_first"]:
-            self.writer.record_step(data, is_new_episode=True)
-        else:
-            self.writer.record_step(data, is_new_episode=False)
-
+    def observation_callback(self):
+        pass
 
 def main(args=None):
     rclpy.init(args=args)
 
-    dataset_recorder = DatasetRecorder()
+    stream_orchestrator = StreamOrchestrator()
 
-    rclpy.spin(dataset_recorder)
+    rclpy.spin(stream_orchestrator)
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
-    dataset_recorder.destroy_node()
+    stream_orchestrator.destroy_node()
     rclpy.shutdown()
 
 
