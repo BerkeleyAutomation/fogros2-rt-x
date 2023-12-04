@@ -43,6 +43,7 @@ import tensorflow_datasets as tfds
 from envlogger.backends import tfds_backend_writer
 from .dataset_spec import DatasetFeatureSpec
 from .dataset_conf import *
+
 # code borrowed from https://github.com/rail-berkeley/oxe_envlogger/blob/main/oxe_envlogger/dm_env.py
 import dm_env
 
@@ -57,16 +58,28 @@ class DatasetRecorder(Node):
         self.feature_spec = DatasetFeatureSpec(
             observation_spec=self.observation_spec,
             action_spec=self.action_spec,
-            step_spec=STEP_SPEC
+            step_spec=STEP_SPEC,
         )
-        print(self.feature_spec.spec_to_ros2_message_definition(self.feature_spec.observation_spec))
-        print(self.feature_spec.spec_to_ros2_message_definition(self.feature_spec.action_spec))
-        print(self.feature_spec.spec_to_ros2_message_definition(self.feature_spec.step_spec))
+        print(
+            self.feature_spec.spec_to_ros2_message_definition(
+                self.feature_spec.observation_spec
+            )
+        )
+        print(
+            self.feature_spec.spec_to_ros2_message_definition(
+                self.feature_spec.action_spec
+            )
+        )
+        print(
+            self.feature_spec.spec_to_ros2_message_definition(
+                self.feature_spec.step_spec
+            )
+        )
         self.dataset_config = self.feature_spec.to_dataset_config(
-            dataset_name = DATASET_NAME
+            dataset_name=DATASET_NAME
         )
 
-        # self.cloud_manager = 
+        # self.cloud_manager =
         # tfds.rlds.rlds_base.DatasetConfig(
         #     name='bridge',
         #     observation_info=self.observation_spec,
@@ -74,41 +87,42 @@ class DatasetRecorder(Node):
         #     reward_info=tf.float64,
         #     discount_info=tf.float64,
         #     step_metadata_info={'is_first': tf.bool, 'is_last': tf.bool, 'is_terminal': tf.bool})
-        
-        self.last_action = None 
-        self.last_observation = None 
+
+        self.last_action = None
+        self.last_observation = None
         self.last_step = None
 
         self.writer = tfds_backend_writer.TFDSBackendWriter(
-                data_directory=SAVE_PATH,
-                max_episodes_per_file=1,
-                ds_config=self.dataset_config)
-
+            data_directory=SAVE_PATH,
+            max_episodes_per_file=1,
+            ds_config=self.dataset_config,
+        )
 
         self.subscription = self.create_subscription(
             Step, "step_topic", self.listener_callback, 10
         )
         self.subscription  # prevent unused variable warning
 
-
     def listener_callback(self, step_msg):
-        self.get_logger().warning(
-            f"Received step: {str(step_msg)[:100]}"
-        )
+        self.get_logger().warning(f"Received step: {str(step_msg)[:100]}")
 
         # self.last_observation, self.last_action, self.last_reward, discount, is_first, is_last, self.last_is_terminal = self.convert_ros2_msg_to_tf_feature(step_msg)
         # self.envlogger.step(
         #     self.last_action
         # )
-        self.last_observation, self.last_action, self.last_step = self.feature_spec.convert_ros2_msg_to_step_tuple(step_msg)
-        
+        (
+            self.last_observation,
+            self.last_action,
+            self.last_step,
+        ) = self.feature_spec.convert_ros2_msg_to_step_tuple(step_msg)
+
         if self.last_step["is_last"]:
             step_type = dm_env.StepType.LAST
         elif self.last_step["is_first"]:
             step_type = dm_env.StepType.FIRST
         else:
             step_type = dm_env.StepType.MID
-        
+
         timestep = dm_env.TimeStep(
             step_type=step_type,
             reward=self.last_step["reward"],
@@ -116,16 +130,14 @@ class DatasetRecorder(Node):
             observation=self.last_observation,
         )
 
-        data = step_data.StepData(timestep = timestep, 
-                                  action = self.last_action, 
-                                  custom_data = None)
-        
+        data = step_data.StepData(
+            timestep=timestep, action=self.last_action, custom_data=None
+        )
+
         if self.last_step["is_first"]:
             self.writer.record_step(data, is_new_episode=True)
         else:
             self.writer.record_step(data, is_new_episode=False)
-        
-
 
         # self.envlogger.log_step(
         #     observation=step_msg.observation,

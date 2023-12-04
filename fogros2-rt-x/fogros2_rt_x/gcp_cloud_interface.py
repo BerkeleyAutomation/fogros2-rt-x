@@ -1,5 +1,3 @@
-
-
 class GcpCloudInterface:
     def __init__(self, bucket_name):
         self.bucket_name = bucket_name
