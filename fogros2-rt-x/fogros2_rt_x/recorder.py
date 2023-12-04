@@ -76,8 +76,7 @@ class DatasetRecorder(Node):
         self.last_step = None
 
         self.writer = tfds_backend_writer.TFDSBackendWriter(
-                data_directory="/home/ubuntu/open-x-embodiment/playground_ds",
-                split_name='train',
+                data_directory=LOCAL_SAVE_PATH,
                 max_episodes_per_file=1,
                 ds_config=self.dataset_config)
 

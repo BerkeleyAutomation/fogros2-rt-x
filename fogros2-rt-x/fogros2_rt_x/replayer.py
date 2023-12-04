@@ -44,10 +44,10 @@ class DatasetReplayer(Node):
     def __init__(self, dataset_name):
         super().__init__("fogros2_rt_x_replayer")
 
-        self.publisher = self.create_publisher(Step, "step_topic", 10)
+        self.publisher = self.create_publisher(Step, "step_info", 10)
         self.dataset = load_rlds_dataset(dataset_name)
         self.logger = self.get_logger()
-        self.logger.info("Loading Dataset " + str(get_dataset_info(["bridge"])))
+        self.logger.info("Loading Dataset " + str(get_dataset_info([dataset_name])))
 
         timer_period = 10  # seconds
         self.create_timer(timer_period, self.timer_callback)
@@ -72,7 +72,7 @@ class DatasetReplayer(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = DatasetReplayer(dataset_name = "bridge")
+    node = DatasetReplayer(dataset_name = DATASET_NAME)
 
     rclpy.spin(node)
 

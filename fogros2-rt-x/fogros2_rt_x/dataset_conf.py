@@ -2,6 +2,9 @@
 import tensorflow_datasets as tfds
 import tensorflow as tf
 
+DATASET_NAME = "bridge"
+LOCAL_SAVE_PATH = "/home/ubuntu/open-x-embodiment/playground_ds"
+
 OBSERVATION_SPEC = tfds.features.FeaturesDict({
                 'image': tfds.features.Image(shape=(480, 640, 3), dtype=tf.uint8),
                 'natural_language_embedding': tfds.features.Tensor(shape=(512,), dtype=tf.float32),
