@@ -111,11 +111,20 @@ def load_rlds_dataset(dataset_name="kuka"):
 
 
 def get_dataset_info(datasets):
-    ret = []
-    for name in datasets:
-        uri = dataset2path(name)
-        b = tfds.builder_from_directory(builder_dir=uri)
-        split = list(b.info.splits.keys())[0]
-        b.as_dataset(split=split)
-        ret.append((name, b.info))
-    return ret
+  """
+  Get information about the datasets.
+
+  Args:
+    datasets (list): List of dataset names.
+
+  Returns:
+    list: List of tuples containing dataset name and dataset information.
+  """
+  ret = []
+  for name in datasets:
+    uri = dataset2path(name)
+    b = tfds.builder_from_directory(builder_dir=uri)
+    split = list(b.info.splits.keys())[0]
+    b.as_dataset(split=split)
+    ret.append((name, b.info))
+  return ret

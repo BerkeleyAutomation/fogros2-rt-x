@@ -49,6 +49,30 @@ import dm_env
 
 
 class DatasetRecorder(Node):
+    """
+    A class for recording datasets in the fogros2-rt-x package.
+
+    This class is responsible for recording datasets based on the provided observation and action specifications.
+
+    Args:
+        None
+
+    Attributes:
+        observation_spec (ObservationSpec): The specification for the observation.
+        action_spec (ActionSpec): The specification for the action.
+        feature_spec (DatasetFeatureSpec): The specification for the dataset features.
+        dataset_config (DatasetConfig): The configuration for the dataset.
+        last_action (Any): The last recorded action.
+        last_observation (Any): The last recorded observation.
+        last_step (Any): The last recorded step.
+        writer (TFDSBackendWriter): The writer for the dataset.
+        subscription (Subscription): The subscription for receiving step messages.
+
+    Methods:
+        __init__(): Initializes the DatasetRecorder object.
+        listener_callback(step_msg): Callback function for processing step messages.
+    """
+
     def __init__(self):
         super().__init__("fogros2_rt_x_recorder")
 
@@ -60,33 +84,10 @@ class DatasetRecorder(Node):
             action_spec=self.action_spec,
             step_spec=STEP_SPEC,
         )
-        print(
-            self.feature_spec.spec_to_ros2_message_definition(
-                self.feature_spec.observation_spec
-            )
-        )
-        print(
-            self.feature_spec.spec_to_ros2_message_definition(
-                self.feature_spec.action_spec
-            )
-        )
-        print(
-            self.feature_spec.spec_to_ros2_message_definition(
-                self.feature_spec.step_spec
-            )
-        )
+
         self.dataset_config = self.feature_spec.to_dataset_config(
             dataset_name=DATASET_NAME
         )
-
-        # self.cloud_manager =
-        # tfds.rlds.rlds_base.DatasetConfig(
-        #     name='bridge',
-        #     observation_info=self.observation_spec,
-        #     action_info=self.action_spec,
-        #     reward_info=tf.float64,
-        #     discount_info=tf.float64,
-        #     step_metadata_info={'is_first': tf.bool, 'is_last': tf.bool, 'is_terminal': tf.bool})
 
         self.last_action = None
         self.last_observation = None
@@ -104,12 +105,20 @@ class DatasetRecorder(Node):
         self.subscription  # prevent unused variable warning
 
     def listener_callback(self, step_msg):
+        """
+        Callback function for processing step messages.
+
+        This function is called whenever a step message is received. It converts the step message to a step tuple,
+        records the step data, and updates the dataset writer.
+
+        Args:
+            step_msg (Step): The step message received.
+
+        Returns:
+            None
+        """
         self.get_logger().warning(f"Received step: {str(step_msg)[:100]}")
 
-        # self.last_observation, self.last_action, self.last_reward, discount, is_first, is_last, self.last_is_terminal = self.convert_ros2_msg_to_tf_feature(step_msg)
-        # self.envlogger.step(
-        #     self.last_action
-        # )
         (
             self.last_observation,
             self.last_action,
@@ -138,14 +147,6 @@ class DatasetRecorder(Node):
             self.writer.record_step(data, is_new_episode=True)
         else:
             self.writer.record_step(data, is_new_episode=False)
-
-        # self.envlogger.log_step(
-        #     observation=step_msg.observation,
-        #     action=step_msg.action,
-        #     reward=step_msg.reward,
-        #     discount=step_msg.discount,
-        #     step_metadata=step_msg.step_metadata,
-        # )
 
 
 def main(args=None):

@@ -42,6 +42,20 @@ from .dataset_conf import *
 
 
 class DatasetReplayer(Node):
+    """
+    A class for replaying datasets in ROS2.
+
+    Args:
+        dataset_name (str): The name of the dataset to be replayed.
+
+    Attributes:
+        publisher (Publisher): The publisher for sending step information.
+        dataset (Dataset): The loaded RLDS dataset.
+        logger (Logger): The logger for logging information.
+        feature_spec (DatasetFeatureSpec): The feature specification for the dataset.
+        episode (Episode): The current episode being replayed.
+    """
+
     def __init__(self, dataset_name):
         super().__init__("fogros2_rt_x_replayer")
 
@@ -63,7 +77,6 @@ class DatasetReplayer(Node):
 
     def timer_callback(self):
         for step in self.episode["steps"]:
-            # msg = tf_step_to_ros2_msg(next(iter(self.episode['steps'])))
             msg = self.feature_spec.convert_tf_step_to_ros2_msg(
                 step, step["action"], step["observation"]
             )

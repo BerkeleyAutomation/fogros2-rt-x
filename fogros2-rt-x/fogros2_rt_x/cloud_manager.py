@@ -40,6 +40,10 @@ class CloudManager:
     def __init__(self, local_dataset_dir, cloud_dataset_dst):
         self.cloud_api_interface = GcpCloudInterface()
 
+
+    def upload_metadata(episode_info):
+        pass 
+
     def sync(self):
         # check the local dataset directory for new files
         # upload any new files to the cloud

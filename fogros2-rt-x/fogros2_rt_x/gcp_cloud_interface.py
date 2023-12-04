@@ -33,6 +33,24 @@
 
 
 class GcpCloudInterface:
+    """
+    A class representing the interface for interacting with Google Cloud Storage.
+
+    Attributes:
+        bucket_name (str): The name of the bucket in Google Cloud Storage.
+        storage_client (google.cloud.storage.Client): The client for interacting with Google Cloud Storage.
+        bucket (google.cloud.storage.Bucket): The bucket object representing the specified bucket.
+
+    Methods:
+        upload(source_file_name, destination_blob_name): Uploads a file to the specified blob in the bucket.
+        download(source_blob_name, destination_file_name): Downloads a file from the specified blob in the bucket.
+        delete(blob_name): Deletes the specified blob from the bucket.
+        list_blobs(): Lists all the blobs in the bucket.
+        list_blobs_with_prefix(prefix, delimiter=None): Lists the blobs in the bucket with the specified prefix and delimiter.
+        list_blobs_with_delimiter(delimiter): Lists the blobs in the bucket with the specified delimiter.
+        list_blobs_with_prefix_delimiter(prefix, delimiter): Lists the blobs in the bucket with the specified prefix and delimiter.
+    """
+
     def __init__(self, bucket_name):
         self.bucket_name = bucket_name
         self.storage_client = storage.Client()
@@ -64,36 +82,4 @@ class GcpCloudInterface:
 
     def list_blobs_with_prefix_delimiter(self, prefix, delimiter):
         blobs = self.bucket.list_blobs(prefix=prefix, delimiter=delimiter)
-        return blobs
-
-    def list_blobs_with_prefix_delimiter(self, prefix, delimiter):
-        blobs = self.bucket.list_blobs(prefix=prefix, delimiter=delimiter)
-        return blobs
-
-    def list_blobs_with_delimiter(self, delimiter):
-        blobs = self.bucket.list_blobs(delimiter=delimiter)
-        return blobs
-
-    def list_blobs_with_prefix_delimiter(self, prefix, delimiter):
-        blobs = self.bucket.list_blobs(prefix=prefix, delimiter=delimiter)
-        return blobs
-
-    def list_blobs_with_delimiter(self, delimiter):
-        blobs = self.bucket.list_blobs(delimiter=delimiter)
-        return blobs
-
-    def list_blobs_with_prefix_delimiter(self, prefix, delimiter):
-        blobs = self.bucket.list_blobs(prefix=prefix, delimiter=delimiter)
-        return blobs
-
-    def list_blobs_with_delimiter(self, delimiter):
-        blobs = self.bucket.list_blobs(delimiter=delimiter)
-        return blobs
-
-    def list_blobs_with_prefix_delimiter(self, prefix, delimiter):
-        blobs = self.bucket.list_blobs(prefix=prefix, delimiter=delimiter)
-        return blobs
-
-    def list_blobs_with_delimiter(self, delimiter):
-        blobs = self.bucket.list_blobs(delimiter=delimiter)
         return blobs
