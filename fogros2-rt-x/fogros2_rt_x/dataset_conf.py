@@ -12,7 +12,7 @@ OBSERVATION_SPEC = tfds.features.FeaturesDict({
 ACTION_SPEC = tfds.features.FeaturesDict({
                 'open_gripper': tfds.features.Scalar(dtype=tf.bool),
                 'rotation_delta':  tfds.features.Tensor(shape=(3,), dtype=tf.float32),
-                # 'terminate_episode': tfds.features.Scalar(dtype=tf.float32),
+                'terminate_episode': tfds.features.Scalar(dtype=tf.float64),
                 'world_vector': tfds.features.Tensor(shape=(3,), dtype=tf.float32),
             })
 
