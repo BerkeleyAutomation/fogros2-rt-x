@@ -93,12 +93,17 @@ class DatasetRecorder(Node):
         self.last_observation = None
         self.last_step = None
 
-        self.metadata_db = BaseDataBaseConnector()
+        self.metadata_db = BigQueryConnector(
+            project_name=BIG_QUERY_PROJECT,
+            dataset_name=DATASET_NAME,
+            table_name="metadata",
+        )
 
         self.writer = CloudBackendWriter(
             data_directory=SAVE_PATH,
             max_episodes_per_file=1,
             ds_config=self.dataset_config,
+            logger = self.get_logger(),
             metadata_database=self.metadata_db,
         )
 

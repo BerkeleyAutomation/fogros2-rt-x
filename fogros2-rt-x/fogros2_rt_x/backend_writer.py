@@ -56,7 +56,7 @@ from envlogger import step_data
 from envlogger.backends import backend_writer
 from envlogger.backends import rlds_utils
 import tensorflow_datasets as tfds
-
+from collections import ChainMap
 
 DatasetConfig = tfds.rlds.rlds_base.DatasetConfig
 
@@ -93,6 +93,7 @@ class CloudBackendWriter(backend_writer.BackendWriter):
         self,
         data_directory: str,
         ds_config: tfds.rlds.rlds_base.DatasetConfig,
+        logger,
         max_episodes_per_file: int = 1000,
         split_name: Optional[str] = None,
         version: str = "0.0.1",
@@ -136,18 +137,25 @@ class CloudBackendWriter(backend_writer.BackendWriter):
         )
         self._split_name = split_name
         self._sequential_writer.initialize_splits([split_name])
-        logging.info("self._data_directory: %r", self._data_directory)
+        self.logger = logger
+        self.logger.info(f"self._data_directory: {self._data_directory}")
 
         self._metadata_database = metadata_database
 
+        self.metadata = {"episode_id": 1, "episode_metadata": 2, "description": "test"}
+
     def _gather_episode_metadata(self) -> Dict[str, Any]:
-        """Gathers episode metadata from the step data."""
-        metadata = {}
+        """Gathers episode metadata"""
+        # metadata = ChainMap(self._metadata, self._current_episode.metadata)
         # if data.episode_metadata is not None:
         #     metadata.update(data.episode_metadata)
         # if data.episode_id is not None:
         #     metadata["episode_id"] = data.episode_id
-        return metadata
+        self.metadata["episode_id"] += 1
+        self.metadata["episode_metadata"] += 1
+        # self.logger.info(f"{self._ds_info}")
+
+        return self.metadata
 
     def _write_and_reset_episode(self):
         if self._current_episode is not None:
@@ -155,7 +163,7 @@ class CloudBackendWriter(backend_writer.BackendWriter):
                 {self._split_name: [self._current_episode.get_rlds_episode()]}
             )
             self.episode_metadata = self._gather_episode_metadata()
-            self._metadata_database.insert(self.episode_metadata)
+            self._metadata_database.insert([self.episode_metadata])
             self._current_episode = None
 
     def _record_step(self, data: step_data.StepData, is_new_episode: bool) -> None:
@@ -173,9 +181,9 @@ class CloudBackendWriter(backend_writer.BackendWriter):
         self._current_episode.metadata = data
 
     def close(self) -> None:
-        logging.info("Deleting the backend with data_dir: %r", self._data_directory)
+        self.logger.info(f"Deleting the backend with data_dir: {self._data_directory}")
         self._write_and_reset_episode()
         self._sequential_writer.close_all()
-        logging.info(
-            "Done deleting the backend with data_dir: %r", self._data_directory
+        self.logger.info(
+            f"Done deleting the backend with data_dir: {self._data_directory}"
         )
