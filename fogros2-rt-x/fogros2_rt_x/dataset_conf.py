@@ -34,7 +34,7 @@
 
 import tensorflow_datasets as tfds
 import tensorflow as tf
-from tensorflow_datasets.core.features import Tensor, Image, FeaturesDict, Scalar
+from tensorflow_datasets.core.features import Tensor, Image, FeaturesDict, Scalar, Text
 from .dataset_spec import DatasetFeatureSpec, FeatureSpec
 
 # the name of the dataset
@@ -52,7 +52,7 @@ BIG_QUERY_PROJECT = "fogros2-rt-x"
 OBSERVATION_SPEC = [
     FeatureSpec("image", Image(shape=(480, 640, 3), dtype=tf.uint8)),
     FeatureSpec("natural_language_embedding", Tensor(shape=(512,), dtype=tf.float32)),
-    FeatureSpec("natural_language_instruction", Tensor(shape=(40,), dtype=tf.string)),
+    FeatureSpec("natural_language_instruction", Text()),
     FeatureSpec("state", Tensor(shape=(7,), dtype=tf.float32)),
 ]
 

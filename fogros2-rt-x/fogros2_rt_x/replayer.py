@@ -81,6 +81,7 @@ class DatasetReplayer(Node):
                 step, step["action"], step["observation"]
             )
             self.publisher.publish(msg)
+        self.episode = next(iter(self.dataset))
 
 
 def main(args=None):
