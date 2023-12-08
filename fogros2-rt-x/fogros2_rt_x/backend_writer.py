@@ -98,8 +98,8 @@ class CloudBackendWriter(backend_writer.BackendWriter):
         split_name: Optional[str] = None,
         version: str = "0.0.1",
         store_ds_metadata: bool = False,
-        metadata_database = None, 
-        **base_kwargs
+        metadata_database=None,
+        **base_kwargs,
     ):
         """Constructor.
 

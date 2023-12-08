@@ -47,6 +47,7 @@ from .backend_writer import CloudBackendWriter
 import dm_env
 from .database_connector import BaseDataBaseConnector, BigQueryConnector
 
+
 class DatasetRecorder(Node):
     """
     A class for recording datasets in the fogros2-rt-x package.
@@ -103,7 +104,7 @@ class DatasetRecorder(Node):
             data_directory=SAVE_PATH,
             max_episodes_per_file=1,
             ds_config=self.dataset_config,
-            logger = self.get_logger(),
+            logger=self.get_logger(),
             metadata_database=self.metadata_db,
         )
 
