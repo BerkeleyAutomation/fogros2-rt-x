@@ -143,6 +143,14 @@ def tf_tensor_to_ros2_attribute(tensor, spec_attribute, ros2_type):  # aka in nu
         )
 
 
+class FeatureSpec:
+    def __init__(self, tf_name, tf_type, ros_topic_name = None, alignment = None) -> None:
+        self.tf_name = tf_name
+        self.tf_type = tf_type
+        self.ros_topic_name = ros_topic_name
+        self.alignment = alignment
+        
+
 class DatasetFeatureSpec:
     def __init__(self, observation_spec, action_spec, step_spec):
         """
@@ -157,20 +165,23 @@ class DatasetFeatureSpec:
         self.action_spec = action_spec
         self.step_spec = step_spec
 
-    def spec_to_ros2_message_definition(self, spec):
+        self.observation_tf_dict = self.spec_to_dict(observation_spec)
+        self.action_tf_dict = self.spec_to_dict(action_spec)
+        self.step_tf_dict = self.spec_to_dict(step_spec)
+
+
+    def spec_to_dict(self, spec):
         """
-        Converts the feature specification to a ROS2 message definition.
+        Converts the feature specification to a dictionary.
 
         Args:
-            spec (dict): The feature specification.
+            spec (list): The feature specification.
 
         Returns:
-            str: The ROS2 message definition.
+            dict: The feature specification in dictionary format.
         """
-        return "\n".join(
-            [tf_feature_to_ros_msg_definition(k, v) for k, v in spec.items()]
-        )
-
+        return {f.tf_name: f.tf_type for f in spec}
+    
     def to_dataset_config(self, dataset_name):
         """
         Converts the DatasetFeatureSpec to a tfds.rlds.rlds_base.DatasetConfig object.
@@ -183,14 +194,14 @@ class DatasetFeatureSpec:
         """
         return tfds.rlds.rlds_base.DatasetConfig(
             name=dataset_name,
-            observation_info=self.observation_spec,
-            action_info=self.action_spec,
-            reward_info=self.step_spec["reward"],
-            discount_info=self.step_spec["discount"],
+            observation_info=self.observation_tf_dict,
+            action_info=self.action_tf_dict,
+            reward_info=self.step_tf_dict["reward"],
+            discount_info=self.step_tf_dict["discount"],
             step_metadata_info={
-                "is_first": self.step_spec["is_first"],
-                "is_last": self.step_spec["is_last"],
-                "is_terminal": self.step_spec["is_terminal"],
+                "is_first": self.step_tf_dict["is_first"],
+                "is_last": self.step_tf_dict["is_last"],
+                "is_terminal": self.step_tf_dict["is_terminal"],
             },
         )
 
@@ -208,13 +219,14 @@ class DatasetFeatureSpec:
         action = dict()
         step = dict()
 
-        for k, v in self.observation_spec.items():
+        for k, v in self.observation_tf_dict.items():
             observation[k] = ros2_attribute_to_tf_feature(
                 getattr(ros2_msg.observation, k), v
             )
-        for k, v in self.action_spec.items():
+        for k, v in self.action_tf_dict.items():
             action[k] = ros2_attribute_to_tf_feature(getattr(ros2_msg.action, k), v)
-        for k, v in self.step_spec.items():
+
+        for k, v in self.step_tf_dict.items():
             step[k] = ros2_attribute_to_tf_feature(getattr(ros2_msg, k), v)
 
         return observation, action, step
@@ -234,28 +246,28 @@ class DatasetFeatureSpec:
         ros2_msg = Step()
         ros2_msg.observation = Observation()
         ros2_msg.action = Action()
-        for k, v in self.step_spec.items():
-            if k == "discount":
+        for feature in self.step_spec:
+            if feature.tf_name  == "discount":
                 #TODO: currently skip discount because the original dataset
-                # does not have discount
+                # does not hafeature.tf_type e discount
                 continue
-            ros2_msg_type = type(getattr(ros2_msg, k))
+            ros2_msg_type = type(getattr(ros2_msg, feature.tf_name))
             converted_value_to_ros2 = tf_tensor_to_ros2_attribute(
-                step[k], v, ros2_msg_type
+                step[feature.tf_name], feature.tf_type , ros2_msg_type
             )
-            setattr(ros2_msg, k, converted_value_to_ros2)
-        for k, v in self.observation_spec.items():
-            ros2_msg_type = type(getattr(ros2_msg.observation, k))
+            setattr(ros2_msg, feature.tf_name , converted_value_to_ros2)
+        for feature in self.observation_spec:
+            ros2_msg_type = type(getattr(ros2_msg.observation, feature.tf_name))
             converted_value_to_ros2 = tf_tensor_to_ros2_attribute(
-                observation[k], v, ros2_msg_type
+                observation[feature.tf_name ], feature.tf_type , ros2_msg_type
             )
-            setattr(ros2_msg.observation, k, converted_value_to_ros2)
-        for k, v in self.action_spec.items():
-            ros2_msg_type = type(getattr(ros2_msg.action, k))
+            setattr(ros2_msg.observation, feature.tf_name , converted_value_to_ros2)
+        for feature in self.action_spec:
+            ros2_msg_type = type(getattr(ros2_msg.action, feature.tf_name))
             converted_value_to_ros2 = tf_tensor_to_ros2_attribute(
-                action[k], v, ros2_msg_type
+                action[feature.tf_name ], feature.tf_type , ros2_msg_type
             )
-            setattr(ros2_msg.action, k, converted_value_to_ros2)
+            setattr(ros2_msg.action, feature.tf_name , converted_value_to_ros2)
 
         return ros2_msg
 

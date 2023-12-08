@@ -34,7 +34,8 @@
 
 import tensorflow_datasets as tfds
 import tensorflow as tf
-
+from tensorflow_datasets.core.features import Tensor, Image, FeaturesDict, Scalar
+from .dataset_spec import DatasetFeatureSpec, FeatureSpec
 # the name of the dataset
 DATASET_NAME = "bridge"
 # TODO: other information such as citation
@@ -47,35 +48,25 @@ SAVE_PATH = "/home/ubuntu/open-x-embodiment/playground_ds"
 # the project should be accessible through google cloud account
 BIG_QUERY_PROJECT = "fogros2-rt-x"
 
-# observation specification (field name and field type)
-OBSERVATION_SPEC = tfds.features.FeaturesDict(
-    {
-        "image": tfds.features.Image(shape=(480, 640, 3), dtype=tf.uint8),
-        "natural_language_embedding": tfds.features.Tensor(
-            shape=(512,), dtype=tf.float32
-        ),
-        "natural_language_instruction": tfds.features.Tensor(
-            shape=(40,), dtype=tf.string
-        ),
-        "state": tfds.features.Tensor(shape=(7,), dtype=tf.float32),
-    }
-)
+OBSERVATION_SPEC = [
+    FeatureSpec("image", Image(shape=(480, 640, 3), dtype=tf.uint8)),
+    FeatureSpec("natural_language_embedding", Tensor(shape=(512,), dtype=tf.float32)),
+    FeatureSpec("natural_language_instruction", Tensor(shape=(40,), dtype=tf.string)),
+    FeatureSpec("state", Tensor(shape=(7,), dtype=tf.float32)),
+]
 
-# action specification (field name and field type)
-ACTION_SPEC = tfds.features.FeaturesDict(
-    {
-        "open_gripper": tfds.features.Scalar(dtype=tf.bool),
-        "rotation_delta": tfds.features.Tensor(shape=(3,), dtype=tf.float32),
-        "terminate_episode": tfds.features.Scalar(dtype=tf.float64),
-        "world_vector": tfds.features.Tensor(shape=(3,), dtype=tf.float32),
-    }
-)
+ACTION_SPEC = [
+    FeatureSpec("open_gripper", Scalar(dtype=tf.bool)),
+    FeatureSpec("rotation_delta", Tensor(shape=(3,), dtype=tf.float32)),
+    FeatureSpec("terminate_episode", Scalar(dtype=tf.float64)),
+    FeatureSpec("world_vector", Tensor(shape=(3,), dtype=tf.float32)),
+]
 
-# step specification (field name and field type)
-STEP_SPEC = {
-    "reward": tfds.features.Scalar(dtype=tf.float64),
-    "discount": tfds.features.Scalar(dtype=tf.float64),
-    "is_first": tfds.features.Scalar(dtype=tf.bool),
-    "is_last": tfds.features.Scalar(dtype=tf.bool),
-    "is_terminal": tfds.features.Scalar(dtype=tf.bool),
-}
+
+STEP_SPEC = [
+    FeatureSpec("reward", Scalar(dtype=tf.float64)),
+    FeatureSpec("discount", Scalar(dtype=tf.float64)),
+    FeatureSpec("is_first", Scalar(dtype=tf.bool)),
+    FeatureSpec("is_last", Scalar(dtype=tf.bool)),
+    FeatureSpec("is_terminal", Scalar(dtype=tf.bool)),
+]
