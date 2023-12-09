@@ -144,11 +144,13 @@ def tf_tensor_to_ros2_attribute(tensor, spec_attribute, ros2_type):  # aka in nu
 
 
 class FeatureSpec:
-    def __init__(self, tf_name, tf_type, ros_topic_name=None, alignment=None) -> None:
+    def __init__(self, tf_name, tf_type, ros_name=None, is_triggering_topic=False) -> None:
         self.tf_name = tf_name
         self.tf_type = tf_type
-        self.ros_topic_name = ros_topic_name
-        self.alignment = alignment
+        self.ros_name = ros_name if ros_name else tf_name
+        self.ros_type = tf_feature_to_ros_msg_definition(tf_name, tf_type) #TODO: this is wrong
+        self.is_triggering_topic = is_triggering_topic
+
 
 
 class DatasetFeatureSpec:

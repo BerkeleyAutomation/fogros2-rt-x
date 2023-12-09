@@ -63,19 +63,53 @@ class StreamOrchestrator(Node):
             step_spec=self.step_spec,
         )
 
-        # TODO: expand the dataset spec 
-        # subscribe to each individual topics 
-        # figure out how to match it 
-        # reference from Lawrence: 
-        # just grab the image right before the action. https://github.com/rail-berkeley/bridge_data_robot/blob/main/widowx_envs/widowx_envs/base/robot_base_env.py#L280
-        # https://github.com/rail-berkeley/bridge_data_robot/blob/main/widowx_envs/widowx_envs/base/robot_base_env.py#L408
+        self.triggering_topic = None 
+        self._init_observation_topics()
+        self._init_action_topics()
 
-    def action_callback(self):
-        pass
+        self.observation_msg = Observation()
+        self.action_msg = Action()
+        self.step_msg = Step()
 
-    def observation_callback(self):
-        pass
+    def _init_observation_topics(self):
+        # create subscriptions for all observation topics
+        for observation in self.observation_spec:
+            callback = self.create_dynamic_callback(observation.topic)
+            self.create_subscription(
+                observation.type,
+                observation.topic,
+                callback,
+                10,
+            )
 
+    def _init_action_topics(self):
+        # create publishers for all action topics
+        for action in self.action_spec:
+            callback = self.create_dynamic_callback(action.topic)
+            self.create_subscription(
+                action.type,
+                action.topic,
+                10,
+                callback
+            )
+            if action.triggering_topic: 
+                self.triggering_topic = action.triggering_topic
+        if self.triggering_topic is None:
+            raise RuntimeError("No triggering topic found in action spec, need to choose one action topic as triggering topic")
+
+    def create_dynamic_action_callback(self, topic_name):
+        def action_callback(self, msg):
+            # Custom logic here, possibly using topic_name
+            self.logger.info(f"Received message on {topic_name}: {msg}")
+        return action_callback
+
+    def create_dynamic_observation_callback(self, topic_name):
+        def observation_callback(self, msg):
+            # Custom logic here, possibly using topic_name
+            self.logger.info(f"Received message on {topic_name}: {msg}")
+        return observation_callback
+    
+        
 def main(args=None):
     rclpy.init(args=args)
 
