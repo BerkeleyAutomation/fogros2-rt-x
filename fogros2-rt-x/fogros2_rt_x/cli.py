@@ -35,6 +35,36 @@ import boto3
 from botocore.exceptions import NoRegionError
 from ros2cli.verb import VerbExtension
 
+from ros2cli.command import CommandExtension, add_subparsers_on_demand
+
+
+class FogCommand(CommandExtension):
+    """Base 'fog' command ROS 2 CLI extension."""
+
+    def add_arguments(self, parser, cli_name):
+        """Add verb parsers."""
+        self._subparser = parser
+        # add arguments and sub-commands of verbs
+        add_subparsers_on_demand(
+            parser, cli_name, "_verb", "fogros2_rt_x.verb", required=False
+        )
+
+    def main(self, *, parser, args):
+        """
+        Handle fog command.
+
+        Take in args from CLI, pass to verbs if specified,
+        otherwise print help.
+        """
+        # in case no verb was passed
+        if not hasattr(args, "_verb"):
+            self._subparser.print_help()
+            return 0
+
+        # call the verb's main method
+        extension = getattr(args, "_verb")
+        return extension.main(args=args)
+
 
 class ConfigVerb(VerbExtension):
     def add_arguments(self, parser, cli_name):

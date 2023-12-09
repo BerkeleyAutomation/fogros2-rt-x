@@ -51,10 +51,10 @@ setup(
             "recorder = fogros2_rt_x.recorder:main",
         ],
         "ros2cli.command": [
-            "fgr = fogros2_rt_x.fog:FogCommand",
+            "fgr = fogros2_rt_x.cli:FogCommand",
         ],
         "fogros2_rt_x.verb": [
-            "config = fogros2_rt_x.config:ConfigVerb",
+            "config = fogros2_rt_x.cli:ConfigVerb",
         ],
     },
 )
