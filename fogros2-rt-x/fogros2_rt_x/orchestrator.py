@@ -116,8 +116,7 @@ class StreamOrchestrator(Node):
 
     def create_dynamic_action_callback(self, topic_name):
         def action_callback(self, msg):
-            # Custom logic here, possibly using topic_name
-            self.logger.info(f"Received action message on {topic_name}")
+            # self.logger.info(f"Received action message on {topic_name}")
             setattr(self.action_msg, topic_name, msg)
 
             if topic_name == self.triggering_topic:
@@ -128,15 +127,13 @@ class StreamOrchestrator(Node):
 
     def create_dynamic_observation_callback(self, topic_name):
         def observation_callback(self, msg):
-            # Custom logic here, possibly using topic_name
-            self.logger.info(f"Received observation message on {topic_name}")
+            # self.logger.info(f"Received observation message on {topic_name}")
             setattr(self.observation_msg, topic_name, msg)
         return functools.partial(observation_callback, self)
     
     def create_dynamic_step_callback(self, topic_name):
         def step_callback(self, msg):
-            # Custom logic here, possibly using topic_name
-            self.logger.info(f"Received step message on {topic_name}")
+            # self.logger.info(f"Received step message on {topic_name}")
             setattr(self.step_msg, topic_name, msg)
         return functools.partial(step_callback, self)
     

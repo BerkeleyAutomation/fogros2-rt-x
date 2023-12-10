@@ -31,7 +31,7 @@
 # PROVIDED HEREUNDER IS PROVIDED "AS IS". REGENTS HAS NO OBLIGATION TO PROVIDE
 # MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
-
+import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
 from fogros2_rt_x_msgs.msg import Step, Observation, Action
@@ -88,9 +88,18 @@ def ros2_msg_data_to_tf_tensor_data(ros2_attribute, tf_feature):
     elif isinstance(tf_feature, tfds.features.Text):
         return ros2_attribute
     elif isinstance(tf_feature, tfds.features.Scalar):
-        return ros2_attribute
+        return ros2_attribute.data
     elif isinstance(tf_feature, tfds.features.Tensor):
-        return list(ros2_attribute)
+        data = ros2_attribute.data
+        # Retrieve the shape information from the MultiArrayLayout
+        original_shape = [dim.size for dim in ros2_attribute.layout.dim]
+        # Convert the data into a TensorFlow tensor
+        tensor = tf.constant(data, dtype=tf.float64)
+
+        # Reshape the tensor to its original shape
+        reshaped_tensor = tf.reshape(tensor, original_shape)
+        # Convert the data to a numpy array and then reshape it
+        return reshaped_tensor
     else:
         raise NotImplementedError(
             f"feature type {type(tf_feature)} for {tf_feature} not implemented"
