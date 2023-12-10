@@ -259,6 +259,7 @@ class FeatureSpec:
         self.ros_topic_name = ros_topic_name if ros_topic_name else tf_name
         self.ros_type = tf_feature_definition_to_ros_msg_class(tf_type)
         self.is_triggering_topic = is_triggering_topic
+        self.default_value = default_value
 
     def convert_tf_tensor_data_to_ros2_msg(self, tensor_data):
         """
@@ -289,20 +290,20 @@ class DatasetFeatureSpec:
         self.action_spec = action_spec
         self.step_spec = step_spec
 
-        self.observation_tf_dict = self.spec_to_dict(observation_spec)
-        self.action_tf_dict = self.spec_to_dict(action_spec)
-        self.step_tf_dict = self.spec_to_dict(step_spec)
+        self.observation_tf_dict = self.spec_to_tf_type_dict(observation_spec)
+        self.action_tf_dict = self.spec_to_tf_type_dict(action_spec)
+        self.step_tf_dict = self.spec_to_tf_type_dict(step_spec)
 
         self.check_spec(observation_spec)
         self.check_spec(action_spec)
         self.check_spec(step_spec)
 
         print("=== observation spec ===")
-        print(self.tf_spec_definition_to_ros2_msg_definition(self.observation_tf_dict))
+        print(self.feature_spec_list_to_ros2_msg_definition(self.observation_spec))
         print("=== action spec ===")
-        print(self.tf_spec_definition_to_ros2_msg_definition(self.action_tf_dict))
+        print(self.feature_spec_list_to_ros2_msg_definition(self.action_spec))
         print("=== step spec ===")
-        print(self.tf_spec_definition_to_ros2_msg_definition(self.step_tf_dict))
+        print(self.feature_spec_list_to_ros2_msg_definition(self.step_spec))
 
     def check_spec(self, spec):
         """
@@ -338,7 +339,7 @@ class DatasetFeatureSpec:
                 f"feature spec must have one triggering topic, got {triggering_topic_count} instead"
             )
 
-    def spec_to_dict(self, spec):
+    def spec_to_tf_type_dict(self, spec):
         """
         Converts the feature specification to a dictionary.
 
@@ -452,6 +453,22 @@ class DatasetFeatureSpec:
             ]
         )
 
+    def feature_spec_list_to_ros2_msg_definition(self, feature_spec_list):
+        """
+        Converts a list of feature specifications to a ROS2 message definition.
+
+        Args:
+            feature_spec_list (list): The list of feature specifications.
+
+        Returns:
+            str: The ROS2 message definition.
+        """
+        return "\n".join(
+            [
+                tf_feature_definition_to_ros_msg_str(spec.tf_name, spec.tf_type, default_val=spec.default_value)
+                for spec in feature_spec_list
+            ]
+        )
 
 # def cast_tensor_to_class_type(tensor, class_type):
 #     return class_type(tensor.numpy())

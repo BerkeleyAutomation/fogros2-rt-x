@@ -39,12 +39,19 @@ def generate_launch_description():
     """Talker example that launches everything locally."""
     ld = LaunchDescription()
 
-    listener_node = Node(
-        package="fogros2_examples", executable="listener", output="screen"
+    # orchestrator node 
+    orchestrator_node = Node(
+        package="fogros2_rt_x",
+        executable="orchestrator",
+        output="screen",
     )
-    talker_node = Node(
-        package="fogros2_examples", executable="talker", output="screen"
+    ld.add_action(orchestrator_node)
+
+    # recorder node
+    recorder_node = Node(
+        package="fogros2_rt_x",
+        executable="recorder",
+        output="screen",
     )
-    ld.add_action(talker_node)
-    ld.add_action(listener_node)
+    ld.add_action(recorder_node)
     return ld
