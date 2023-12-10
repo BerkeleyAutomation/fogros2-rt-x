@@ -36,6 +36,38 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 from fogros2_rt_x_msgs.msg import Step, Observation, Action
 from cv_bridge import CvBridge
+from std_msgs.msg import MultiArrayLayout, MultiArrayDimension
+
+
+tf_dtype_to_ros_class_map = {
+    tf.float32: "std_msgs/Float32",
+    tf.float64: "std_msgs/Float64",
+    tf.int8: "std_msgs/Int8",
+    tf.int16: "std_msgs/Int16",
+    tf.int32: "std_msgs/Int32",
+    tf.int64: "std_msgs/Int64",
+    tf.uint8: "std_msgs/UInt8",
+    tf.uint16: "std_msgs/UInt16",
+    tf.uint32: "std_msgs/UInt32",
+    tf.uint64: "std_msgs/UInt64",
+    tf.bool: "std_msgs/Bool",
+    tf.string: "std_msgs/String",
+}
+
+tf_tensor_dtype_to_ros_multi_array_map = {
+    tf.float32: "std_msgs/Float32MultiArray",
+    tf.float64: "std_msgs/Float64MultiArray",
+    tf.int8: "std_msgs/Int8MultiArray",
+    tf.int16: "std_msgs/Int16MultiArray",
+    tf.int32: "std_msgs/Int32MultiArray",
+    tf.int64: "std_msgs/Int64MultiArray",
+    tf.uint8: "std_msgs/UInt8MultiArray",
+    tf.uint16: "std_msgs/UInt16MultiArray",
+    tf.uint32: "std_msgs/UInt32MultiArray",
+    tf.uint64: "std_msgs/UInt64MultiArray",
+    tf.bool: "std_msgs/BoolMultiArray",
+    tf.string: "std_msgs/StringMultiArray",
+}
 
 
 def ros2_msg_data_to_tf_tensor_data(ros2_attribute, tf_feature):
@@ -66,6 +98,8 @@ def ros2_msg_data_to_tf_tensor_data(ros2_attribute, tf_feature):
 
 
 def cast_tensor_to_class_type(tensor, class_type):
+    print(tensor.numpy(), tensor.numpy().shape)
+    print(bool(tensor.numpy()))
     return class_type(tensor.numpy())
 
 
@@ -87,27 +121,51 @@ def tf_tensor_data_to_ros2_attribute_data(tensor, spec_attribute, ros2_type):  #
         converted_msg = bridge.cv2_to_imgmsg(converted_tensor.numpy())
         return converted_msg
     elif isinstance(spec_attribute, tfds.features.Text):
-        return str(tensor)
+        msg = ros2_type()
+        msg.data = str(tensor)
+        return msg
     elif isinstance(spec_attribute, tfds.features.Scalar):
-        return cast_tensor_to_class_type(tensor, ros2_type)
+        msg = ros2_type()
+        # https://stackoverflow.com/questions/9452775/converting-numpy-dtypes-to-native-python-types
+        data = tensor.numpy().item() 
+        msg.data = data
+        return msg 
     elif isinstance(spec_attribute, tfds.features.Tensor):
-        # TODO: need to handle 2D array here
-        tensor_dtype = tensor.dtype
-        if tensor_dtype == tf.float32 or tensor_dtype == tf.float64:
-            return [float(x) for x in tensor.numpy()]
-        elif tensor_dtype == tf.int32 or tensor_dtype == tf.int64:
-            return [int(x) for x in tensor.numpy()]
-        elif tensor_dtype == tf.bool:
-            return [bool(x) for x in tensor.numpy()]
-        elif tensor_dtype == tf.string:
-            return str(tensor.numpy())
-        else:
-            try:
-                return [tensor_dtype(x) for x in tensor.numpy()]
-            except Exception as e:
-                raise NotImplementedError(
-                    f"feature type {type(spec_attribute)} for {spec_attribute} not implemented"
-                )
+        # convert tensor to ros2 std_msgs/MultiArray
+
+        tensor_list = tf.reshape(tensor, [-1]).numpy().tolist() # flatten it
+        # dim = MultiArrayDimension()
+        # dim.label = 'tensor_size'  
+        # print(tensor.shape, tensor.size)
+        # dim.size = tensor.size
+        # dim.stride = tensor.size  # not important (?)
+
+        # Determine the shape and calculate strides
+        shape = tensor.shape
+        strides = [1]
+        for s in reversed(shape[:-1]):
+            strides.insert(0, strides[0] * s)
+
+        # Create MultiArrayDimension for each dimension
+        dims = []
+        for i, (dim_size, stride) in enumerate(zip(shape, strides)):
+            dim = MultiArrayDimension()
+            dim.label = f"dim_{i}"
+            dim.size = dim_size
+            dim.stride = stride
+            dims.append(dim)
+
+        layout = MultiArrayLayout()
+        layout.dim = dims
+        layout.data_offset = 0
+
+        # create a ros2 std_msgs/MultiArray
+        multiarray = ros2_type()
+        # set the data field of the ros2 std_msgs/MultiArray
+        multiarray.layout = layout
+        multiarray.data = tensor_list
+
+        return multiarray
     else:
         raise NotImplementedError(
             f"feature type {type(spec_attribute)} for {spec_attribute} not implemented"
@@ -140,35 +198,6 @@ def get_ROS_class(ros_message_type, srv=False):
             msg_or_srv + ' import ' + message_name + '" failed.')
     return msg_class
 
-tf_dtype_to_ros_class_map = {
-    tf.float32: "std_msgs/Float32",
-    tf.float64: "std_msgs/Float64",
-    tf.int8: "std_msgs/Int8",
-    tf.int16: "std_msgs/Int16",
-    tf.int32: "std_msgs/Int32",
-    tf.int64: "std_msgs/Int64",
-    tf.uint8: "std_msgs/UInt8",
-    tf.uint16: "std_msgs/UInt16",
-    tf.uint32: "std_msgs/UInt32",
-    tf.uint64: "std_msgs/UInt64",
-    tf.bool: "std_msgs/Bool",
-    tf.string: "std_msgs/String",
-}
-
-tf_tensor_dtype_to_ros_multi_array_map = {
-    tf.float32: "std_msgs/Float32MultiArray",
-    tf.float64: "std_msgs/Float64MultiArray",
-    tf.int8: "std_msgs/Int8MultiArray",
-    tf.int16: "std_msgs/Int16MultiArray",
-    tf.int32: "std_msgs/Int32MultiArray",
-    tf.int64: "std_msgs/Int64MultiArray",
-    tf.uint8: "std_msgs/UInt8MultiArray",
-    tf.uint16: "std_msgs/UInt16MultiArray",
-    tf.uint32: "std_msgs/UInt32MultiArray",
-    tf.uint64: "std_msgs/UInt64MultiArray",
-    tf.bool: "std_msgs/BoolMultiArray",
-    tf.string: "std_msgs/StringMultiArray",
-}
 
 def tf_feature_definition_to_ros_msg_class_str(feature):
     if isinstance(feature, tfds.features.Image):
@@ -206,14 +235,26 @@ def tf_feature_definition_to_ros_msg_str(name, feature):
 
 
 class FeatureSpec:
-    def __init__(self, tf_name, tf_type, ros_name=None, is_triggering_topic=False) -> None:
+    def __init__(self, tf_name, tf_type, ros_topic_name=None, is_triggering_topic=False) -> None:
         self.tf_name = tf_name
         self.tf_type = tf_type
-        self.ros_name = ros_name if ros_name else tf_name
+        self.ros_topic_name = ros_topic_name if ros_topic_name else tf_name
         self.ros_type = tf_feature_definition_to_ros_msg_class(tf_type) 
         self.is_triggering_topic = is_triggering_topic
 
+    def convert_tf_tensor_data_to_ros2_msg(self, tensor_data):
+        """
+        This function converts TensorFlow tensors to ROS (Robot Operating System) message attributes.
 
+        Parameters:
+        tf_data (tf.Tensor): The TensorFlow tensor to be converted.
+
+        Returns:
+        any: The ROS attribute.
+        """
+        return tf_tensor_data_to_ros2_attribute_data(
+            tensor_data, self.tf_type, self.ros_type
+        )
 
 class DatasetFeatureSpec:
     def __init__(self, observation_spec, action_spec, step_spec):

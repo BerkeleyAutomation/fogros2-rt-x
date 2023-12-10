@@ -62,9 +62,12 @@ class DatasetReplayer(Node):
         self.declare_parameter("dataset_name", DATASET_NAME)
         dataset_name = self.get_parameter("dataset_name").value
 
+        self.declare_parameter("per_episode_interval", 10) # second
+        self.per_episode_interval = self.get_parameter("per_episode_interval").value
+
         self.declare_parameter(
-            "replay_type", "as_single_topic"
-        )  # or as_single_topic
+            "replay_type", "as_separate_topics"
+        )  # as_single_topic | as_separate_topics
         replay_type = self.get_parameter("replay_type").value
 
         self.dataset = load_rlds_dataset(dataset_name)
@@ -79,6 +82,7 @@ class DatasetReplayer(Node):
         self.episode = next(iter(self.dataset))
 
         if replay_type == "as_separate_topics":
+            self.topic_name_to_publisher_dict = dict()
             self.init_publisher_separate_topics()
         elif replay_type == "as_single_topic":
             self.init_publisher_single_topic()
@@ -88,17 +92,56 @@ class DatasetReplayer(Node):
                 + str(replay_type)
                 + ". Must be one of: as_separate_topics, as_single_topic."
             )
+        
+        
 
     def init_publisher_separate_topics(self):
-        pass
+        for observation in self.feature_spec.observation_spec:
+            publisher = self.create_publisher(
+                observation.ros_type, observation.ros_topic_name, 10)
+            self.topic_name_to_publisher_dict[observation.ros_topic_name] = publisher
+        
+        for action in self.feature_spec.action_spec:
+            publisher = self.create_publisher(
+                action.ros_type, action.ros_topic_name, 10)
+            self.topic_name_to_publisher_dict[action.ros_topic_name] = publisher
+        
+        for step in self.feature_spec.step_spec:
+            publisher = self.create_publisher(
+                step.ros_type, step.ros_topic_name, 10)
+            self.topic_name_to_publisher_dict[step.ros_topic_name] = publisher
+        
+        self.create_timer(self.per_episode_interval, self.timer_callback_separate_topics)
 
     def init_publisher_single_topic(self):
         self.publisher = self.create_publisher(Step, "step_info", 10)
         callback = self.timer_callback_single_topic
-        self.create_timer(10, callback)
+        self.create_timer(self.per_episode_interval, callback)
 
     def timer_callback_separate_topics(self):
-        pass
+        for step in self.episode["steps"]:
+            for observation in self.feature_spec.observation_spec:
+                msg = observation.convert_tf_tensor_data_to_ros2_msg(
+                    step["observation"][observation.tf_name]
+                )
+                self.logger.info(f"Publishing observation {observation.tf_name} on topic {observation.ros_topic_name}")
+                self.topic_name_to_publisher_dict[observation.ros_topic_name].publish(msg)
+            
+            for action in self.feature_spec.action_spec:
+                msg = action.convert_tf_tensor_data_to_ros2_msg(
+                    step["action"][action.tf_name]
+                )
+                self.logger.info(f"Publishing action {action.tf_name} on topic {action.ros_topic_name}")
+                self.topic_name_to_publisher_dict[action.ros_topic_name].publish(msg)
+            
+            # for step in self.feature_spec.step_spec:
+            #     msg = step.convert_tf_tensor_data_to_ros2_msg(
+            #         self.episode["step"][step.name]
+            #     )
+            #     self.logger.info(f"Publishing step {step.name} on topic {step.ros_topic_name}")
+            #     self.topic_name_to_publisher_dict[step.ros_topic_name].publish(msg)
+            
+        self.episode = next(iter(self.dataset))
 
     def timer_callback_single_topic(self):
         for step in self.episode["steps"]:
@@ -110,6 +153,9 @@ class DatasetReplayer(Node):
 
 
 def main(args=None):
+
+    # tf.experimental.numpy.experimental_enable_numpy_behavior()
+    
     rclpy.init(args=args)
     node = DatasetReplayer()
 
