@@ -120,9 +120,10 @@ class DatasetReplayer(Node):
 
     def timer_callback_separate_topics(self):
         for step in self.episode["steps"]:
-            trigger_topic_msg = None 
-            trigger_topic = None
             for observation in self.feature_spec.observation_spec:
+                if observation.tf_name not in step["observation"]:
+                    self.logger.warn(f"Observation {observation.tf_name} not found in step data")
+                    continue
                 msg = observation.convert_tf_tensor_data_to_ros2_msg(
                     step["observation"][observation.tf_name]
                 )
@@ -130,12 +131,8 @@ class DatasetReplayer(Node):
                 self.topic_name_to_publisher_dict[observation.ros_topic_name].publish(msg)
             
             for action in self.feature_spec.action_spec:
-                if action.is_triggering_topic:
-                    trigger_topic_msg = action.convert_tf_tensor_data_to_ros2_msg(
-                        step["action"][action.tf_name]
-                    )
-                    trigger_topic = action.ros_topic_name
-                    # skip triggering topic to process it later (so that we can wrap up with the latest action)
+                if action.tf_name not in step["action"]:
+                    self.logger.warn(f"Action {action.tf_name} not found in step data")
                     continue
                 msg = action.convert_tf_tensor_data_to_ros2_msg(
                     step["action"][action.tf_name]
@@ -143,18 +140,15 @@ class DatasetReplayer(Node):
                 self.logger.info(f"Publishing action {action.tf_name} on topic {action.ros_topic_name}")
                 self.topic_name_to_publisher_dict[action.ros_topic_name].publish(msg)
 
-            # TODO: steps
-            # for step in self.feature_spec.step_spec:
-            #     msg = step.convert_tf_tensor_data_to_ros2_msg(
-            #         self.episode["step"][step.name]
-            #     )
-            #     self.logger.info(f"Publishing step {step.name} on topic {step.ros_topic_name}")
-            #     self.topic_name_to_publisher_dict[step.ros_topic_name].publish(msg)
-
-
-            # wrap up with the latest action
-            self.topic_name_to_publisher_dict[trigger_topic].publish(trigger_topic_msg)
-
+            for step_feature in self.feature_spec.step_spec:
+                if step_feature.tf_name not in step:
+                    self.logger.warn(f"Step {step_feature.tf_name} not found in step data")
+                    continue
+                msg = step_feature.convert_tf_tensor_data_to_ros2_msg(
+                    step[step_feature.tf_name]
+                )
+                self.logger.info(f"Publishing step {step_feature.tf_name} on topic {step_feature.ros_topic_name}")
+                self.topic_name_to_publisher_dict[step_feature.ros_topic_name].publish(msg)
 
         self.episode = next(iter(self.dataset))
 

@@ -101,6 +101,17 @@ class StreamOrchestrator(Node):
         if self.is_triggering_topic is None:
             raise RuntimeError("No triggering topic found in action spec, need to choose one action topic as triggering topic")
 
+    def _init_step_information_topics(self):
+        for step in self.step_spec:
+            callback = self.create_dynamic_step_callback(step.ros_topic_name)
+            self.create_subscription(
+                step.ros_type,
+                step.ros_topic_name,
+                callback,
+                10
+            )
+
+
     def create_dynamic_action_callback(self, topic_name):
         def action_callback(self, msg):
             # Custom logic here, possibly using topic_name
@@ -108,16 +119,8 @@ class StreamOrchestrator(Node):
             setattr(self.action_msg, topic_name, msg)
 
             if topic_name == self.is_triggering_topic:
-                self.step_msg = Step()
                 self.step_msg.action = self.action_msg
                 self.step_msg.observation = self.observation_msg
-                # TODO: fill in the rest of the step_msg
-                self.step_msg.reward = 0.0 
-                self.step_msg.discount = 1.0
-                self.step_msg.is_first = False
-                self.step_msg.is_last = False
-                self.step_msg.is_terminal = False
-
                 self.publisher.publish(self.step_msg)
         return functools.partial(action_callback, self)
 
@@ -128,7 +131,13 @@ class StreamOrchestrator(Node):
             setattr(self.observation_msg, topic_name, msg)
         return functools.partial(observation_callback, self)
     
-        
+    def create_dynamic_step_callback(self, topic_name):
+        def step_callback(self, msg):
+            # Custom logic here, possibly using topic_name
+            self.logger.info(f"Received step message on {topic_name}")
+            setattr(self.step_msg, topic_name, msg)
+        return functools.partial(step_callback, self)
+    
 def main(args=None):
     rclpy.init(args=args)
 

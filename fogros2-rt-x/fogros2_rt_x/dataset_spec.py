@@ -103,7 +103,9 @@ def cast_tensor_to_class_type(tensor, class_type):
     return class_type(tensor.numpy())
 
 
-def tf_tensor_data_to_ros2_attribute_data(tensor, spec_attribute, ros2_type):  # aka in numpy
+def tf_tensor_data_to_ros2_attribute_data(
+    tensor, spec_attribute, ros2_type
+):  # aka in numpy
     """
     This function converts TensorFlow tensors to ROS (Robot Operating System) message attributes.
 
@@ -127,15 +129,15 @@ def tf_tensor_data_to_ros2_attribute_data(tensor, spec_attribute, ros2_type):  #
     elif isinstance(spec_attribute, tfds.features.Scalar):
         msg = ros2_type()
         # https://stackoverflow.com/questions/9452775/converting-numpy-dtypes-to-native-python-types
-        data = tensor.numpy().item() 
+        data = tensor.numpy().item()
         msg.data = data
-        return msg 
+        return msg
     elif isinstance(spec_attribute, tfds.features.Tensor):
         # convert tensor to ros2 std_msgs/MultiArray
 
-        tensor_list = tf.reshape(tensor, [-1]).numpy().tolist() # flatten it
+        tensor_list = tf.reshape(tensor, [-1]).numpy().tolist()  # flatten it
         # dim = MultiArrayDimension()
-        # dim.label = 'tensor_size'  
+        # dim.label = 'tensor_size'
         # print(tensor.shape, tensor.size)
         # dim.size = tensor.size
         # dim.stride = tensor.size  # not important (?)
@@ -171,31 +173,43 @@ def tf_tensor_data_to_ros2_attribute_data(tensor, spec_attribute, ros2_type):  #
             f"feature type {type(spec_attribute)} for {spec_attribute} not implemented"
         )
 
+
 from pydoc import locate
+
+
 def get_ROS_class(ros_message_type, srv=False):
     """
     Returns the ROS message class from ros_message_type.
     :return AnyMsgClass: Class of the ROS message.
     """
     try:
-        package_name, message_name = ros_message_type.split('/')
+        package_name, message_name = ros_message_type.split("/")
     except ValueError:
         raise ValueError(
-            'ros_message_type should be in the shape of package_msgs/Message' +
-            ' (it was ' + ros_message_type + ')')
+            "ros_message_type should be in the shape of package_msgs/Message"
+            + " (it was "
+            + ros_message_type
+            + ")"
+        )
     if not srv:
-        msg_class = locate('{}.msg.{}'.format(package_name, message_name))
+        msg_class = locate("{}.msg.{}".format(package_name, message_name))
     else:
-        msg_class = locate('{}.srv.{}'.format(package_name, message_name))
+        msg_class = locate("{}.srv.{}".format(package_name, message_name))
     if msg_class is None:
         if srv:
-            msg_or_srv = '.srv'
+            msg_or_srv = ".srv"
         else:
-            msg_or_srv = '.msg'
+            msg_or_srv = ".msg"
         raise ValueError(
-            'ros_message_type could not be imported. (' +
-            ros_message_type + ', as "from ' + package_name +
-            msg_or_srv + ' import ' + message_name + '" failed.')
+            "ros_message_type could not be imported. ("
+            + ros_message_type
+            + ', as "from '
+            + package_name
+            + msg_or_srv
+            + " import "
+            + message_name
+            + '" failed.'
+        )
     return msg_class
 
 
@@ -213,10 +227,12 @@ def tf_feature_definition_to_ros_msg_class_str(feature):
             f"feature type {type(feature)} for {feature} not implemented"
         )
 
+
 def tf_feature_definition_to_ros_msg_class(feature):
     return get_ROS_class(tf_feature_definition_to_ros_msg_class_str(feature))
 
-def tf_feature_definition_to_ros_msg_str(name, feature):
+
+def tf_feature_definition_to_ros_msg_str(name, feature, default_val = None):
     """
     This function converts TensorFlow dataset features to ROS (Robot Operating System) message definitions.
 
@@ -231,15 +247,17 @@ def tf_feature_definition_to_ros_msg_str(name, feature):
     NotImplementedError: If the feature type is not implemented.
     """
 
-    return f"{tf_feature_definition_to_ros_msg_class_str(feature)} {name}"
+    return f"{tf_feature_definition_to_ros_msg_class_str(feature)} {name} {default_val if default_val else ''}"
 
 
 class FeatureSpec:
-    def __init__(self, tf_name, tf_type, ros_topic_name=None, is_triggering_topic=False) -> None:
+    def __init__(
+        self, tf_name, tf_type, ros_topic_name=None, default_value = None, is_triggering_topic=False
+    ) -> None:
         self.tf_name = tf_name
         self.tf_type = tf_type
         self.ros_topic_name = ros_topic_name if ros_topic_name else tf_name
-        self.ros_type = tf_feature_definition_to_ros_msg_class(tf_type) 
+        self.ros_type = tf_feature_definition_to_ros_msg_class(tf_type)
         self.is_triggering_topic = is_triggering_topic
 
     def convert_tf_tensor_data_to_ros2_msg(self, tensor_data):
@@ -255,6 +273,7 @@ class FeatureSpec:
         return tf_tensor_data_to_ros2_attribute_data(
             tensor_data, self.tf_type, self.ros_type
         )
+
 
 class DatasetFeatureSpec:
     def __init__(self, observation_spec, action_spec, step_spec):
@@ -285,7 +304,6 @@ class DatasetFeatureSpec:
         print("=== step spec ===")
         print(self.tf_spec_definition_to_ros2_msg_definition(self.step_tf_dict))
 
-
     def check_spec(self, spec):
         """
         Checks the feature specification.
@@ -297,31 +315,29 @@ class DatasetFeatureSpec:
             ValueError: If the feature specification is invalid.
         """
         if not isinstance(spec, list):
-            raise ValueError(
-                f"spec must be a list, got {type(spec)} instead: {spec}"
-            )
+            raise ValueError(f"spec must be a list, got {type(spec)} instead: {spec}")
         for feature in spec:
             if not isinstance(feature, FeatureSpec):
                 raise ValueError(
                     f"feature must be a FeatureSpec, got {type(feature)} instead: {feature}"
                 )
-        
-    def check_triggering_topic(self, spec):
+
+    def check_triggering_topic(self):
         # check if there is a triggering topic
         triggering_topic_count = 0
-        for feature in spec:
+        for feature in self.action_spec:
             if feature.is_triggering_topic:
                 triggering_topic_count += 1
         if triggering_topic_count > 1:
             raise ValueError(
                 f"feature spec can only have one triggering topic, got {triggering_topic_count} instead"
             )
-        
+
         if triggering_topic_count == 0:
             raise ValueError(
                 f"feature spec must have one triggering topic, got {triggering_topic_count} instead"
             )
-        
+
     def spec_to_dict(self, spec):
         """
         Converts the feature specification to a dictionary.
@@ -399,10 +415,6 @@ class DatasetFeatureSpec:
         ros2_msg.observation = Observation()
         ros2_msg.action = Action()
         for feature in self.step_spec:
-            if feature.tf_name == "discount":
-                # TODO: currently skip discount because the original dataset
-                # does not hafeature.tf_type e discount
-                continue
             ros2_msg_type = type(getattr(ros2_msg, feature.tf_name))
             converted_value_to_ros2 = tf_tensor_data_to_ros2_attribute_data(
                 step[feature.tf_name], feature.tf_type, ros2_msg_type
@@ -422,7 +434,6 @@ class DatasetFeatureSpec:
             setattr(ros2_msg.action, feature.tf_name, converted_value_to_ros2)
 
         return ros2_msg
-    
 
     def tf_spec_definition_to_ros2_msg_definition(self, spec):
         """
@@ -436,7 +447,7 @@ class DatasetFeatureSpec:
         """
         return "\n".join(
             [
-                tf_feature_definition_to_ros_msg_str(name, feature)
+                tf_feature_definition_to_ros_msg_str(name, feature, default_val=feature.default_value)
                 for name, feature in spec.items()
             ]
         )
