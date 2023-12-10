@@ -49,6 +49,12 @@ SAVE_PATH = "/home/ubuntu/open-x-embodiment/playground_ds"
 # the project should be accessible through google cloud account
 BIG_QUERY_PROJECT = "fogros2-rt-x"
 
+# currently we support 
+# tfds.features.Image 
+# tfds.features.Tensor (1D only)
+# tfds.features.Text (for variable length of string)
+# tfds.features.Scalar (for any tf.dtype)
+# more types upon request 
 OBSERVATION_SPEC = [
     FeatureSpec("image", Image(shape=(480, 640, 3), dtype=tf.uint8)),
     FeatureSpec("natural_language_embedding", Tensor(shape=(512,), dtype=tf.float32)),

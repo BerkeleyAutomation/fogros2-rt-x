@@ -38,36 +38,7 @@ from fogros2_rt_x_msgs.msg import Step, Observation, Action
 from cv_bridge import CvBridge
 
 
-def tf_feature_to_ros_msg_definition(name, feature):
-    """
-    This function converts TensorFlow dataset features to ROS (Robot Operating System) message definitions.
-
-    Parameters:
-    name (str): The name of the feature.
-    feature (tfds.core.dataset_info.FeatureConnector): The TensorFlow feature to be converted.
-
-    Returns:
-    str: The ROS message definition.
-
-    Raises:
-    NotImplementedError: If the feature type is not implemented.
-    """
-
-    if isinstance(feature, tfds.features.Image):
-        return f"sensor_msgs/Image {name}"
-    elif isinstance(feature, tfds.features.Text):
-        return f"string {name}"
-    elif isinstance(feature, tfds.features.Scalar):
-        return f"{feature.dtype.name} {name}"
-    elif isinstance(feature, tfds.features.Tensor):
-        return f"{feature.np_dtype.name}[] {name}"
-    else:
-        raise NotImplementedError(
-            f"feature type {type(feature)} for {feature} not implemented"
-        )
-
-
-def ros2_attribute_to_tf_feature(ros2_attribute, tf_feature):
+def ros2_msg_data_to_tf_tensor_data(ros2_attribute, tf_feature):
     """
     This function converts ROS (Robot Operating System) message attributes to TensorFlow dataset features.
 
@@ -98,7 +69,7 @@ def cast_tensor_to_class_type(tensor, class_type):
     return class_type(tensor.numpy())
 
 
-def tf_tensor_to_ros2_attribute(tensor, spec_attribute, ros2_type):  # aka in numpy
+def tf_tensor_data_to_ros2_attribute_data(tensor, spec_attribute, ros2_type):  # aka in numpy
     """
     This function converts TensorFlow tensors to ROS (Robot Operating System) message attributes.
 
@@ -142,13 +113,104 @@ def tf_tensor_to_ros2_attribute(tensor, spec_attribute, ros2_type):  # aka in nu
             f"feature type {type(spec_attribute)} for {spec_attribute} not implemented"
         )
 
+from pydoc import locate
+def get_ROS_class(ros_message_type, srv=False):
+    """
+    Returns the ROS message class from ros_message_type.
+    :return AnyMsgClass: Class of the ROS message.
+    """
+    try:
+        package_name, message_name = ros_message_type.split('/')
+    except ValueError:
+        raise ValueError(
+            'ros_message_type should be in the shape of package_msgs/Message' +
+            ' (it was ' + ros_message_type + ')')
+    if not srv:
+        msg_class = locate('{}.msg.{}'.format(package_name, message_name))
+    else:
+        msg_class = locate('{}.srv.{}'.format(package_name, message_name))
+    if msg_class is None:
+        if srv:
+            msg_or_srv = '.srv'
+        else:
+            msg_or_srv = '.msg'
+        raise ValueError(
+            'ros_message_type could not be imported. (' +
+            ros_message_type + ', as "from ' + package_name +
+            msg_or_srv + ' import ' + message_name + '" failed.')
+    return msg_class
+
+tf_dtype_to_ros_class_map = {
+    tf.float32: "std_msgs/Float32",
+    tf.float64: "std_msgs/Float64",
+    tf.int8: "std_msgs/Int8",
+    tf.int16: "std_msgs/Int16",
+    tf.int32: "std_msgs/Int32",
+    tf.int64: "std_msgs/Int64",
+    tf.uint8: "std_msgs/UInt8",
+    tf.uint16: "std_msgs/UInt16",
+    tf.uint32: "std_msgs/UInt32",
+    tf.uint64: "std_msgs/UInt64",
+    tf.bool: "std_msgs/Bool",
+    tf.string: "std_msgs/String",
+}
+
+tf_tensor_dtype_to_ros_multi_array_map = {
+    tf.float32: "std_msgs/Float32MultiArray",
+    tf.float64: "std_msgs/Float64MultiArray",
+    tf.int8: "std_msgs/Int8MultiArray",
+    tf.int16: "std_msgs/Int16MultiArray",
+    tf.int32: "std_msgs/Int32MultiArray",
+    tf.int64: "std_msgs/Int64MultiArray",
+    tf.uint8: "std_msgs/UInt8MultiArray",
+    tf.uint16: "std_msgs/UInt16MultiArray",
+    tf.uint32: "std_msgs/UInt32MultiArray",
+    tf.uint64: "std_msgs/UInt64MultiArray",
+    tf.bool: "std_msgs/BoolMultiArray",
+    tf.string: "std_msgs/StringMultiArray",
+}
+
+def tf_feature_definition_to_ros_msg_class_str(feature):
+    if isinstance(feature, tfds.features.Image):
+        return f"sensor_msgs/Image"
+    elif isinstance(feature, tfds.features.Text):
+        return f"std_msgs/String"
+    elif isinstance(feature, tfds.features.Scalar):
+        return tf_dtype_to_ros_class_map[feature.dtype]
+    elif isinstance(feature, tfds.features.Tensor):
+        return tf_tensor_dtype_to_ros_multi_array_map[feature.dtype]
+    else:
+        raise NotImplementedError(
+            f"feature type {type(feature)} for {feature} not implemented"
+        )
+
+def tf_feature_definition_to_ros_msg_class(feature):
+    return get_ROS_class(tf_feature_definition_to_ros_msg_class_str(feature))
+
+def tf_feature_definition_to_ros_msg_str(name, feature):
+    """
+    This function converts TensorFlow dataset features to ROS (Robot Operating System) message definitions.
+
+    Parameters:
+    name (str): The name of the feature.
+    feature (tfds.core.dataset_info.FeatureConnector): The TensorFlow feature to be converted.
+
+    Returns:
+    str: The ROS message definition.
+
+    Raises:
+    NotImplementedError: If the feature type is not implemented.
+    """
+
+    return f"{tf_feature_definition_to_ros_msg_class_str(feature)} {name}"
+
 
 class FeatureSpec:
     def __init__(self, tf_name, tf_type, ros_name=None, is_triggering_topic=False) -> None:
         self.tf_name = tf_name
         self.tf_type = tf_type
         self.ros_name = ros_name if ros_name else tf_name
-        self.ros_type = tf_feature_to_ros_msg_definition(tf_name, tf_type) #TODO: this is wrong
+        self.ros_type = tf_feature_definition_to_ros_msg_class(tf_type) 
         self.is_triggering_topic = is_triggering_topic
 
 
@@ -221,14 +283,14 @@ class DatasetFeatureSpec:
         step = dict()
 
         for k, v in self.observation_tf_dict.items():
-            observation[k] = ros2_attribute_to_tf_feature(
+            observation[k] = ros2_msg_data_to_tf_tensor_data(
                 getattr(ros2_msg.observation, k), v
             )
         for k, v in self.action_tf_dict.items():
-            action[k] = ros2_attribute_to_tf_feature(getattr(ros2_msg.action, k), v)
+            action[k] = ros2_msg_data_to_tf_tensor_data(getattr(ros2_msg.action, k), v)
 
         for k, v in self.step_tf_dict.items():
-            step[k] = ros2_attribute_to_tf_feature(getattr(ros2_msg, k), v)
+            step[k] = ros2_msg_data_to_tf_tensor_data(getattr(ros2_msg, k), v)
 
         return observation, action, step
 
@@ -253,19 +315,19 @@ class DatasetFeatureSpec:
                 # does not hafeature.tf_type e discount
                 continue
             ros2_msg_type = type(getattr(ros2_msg, feature.tf_name))
-            converted_value_to_ros2 = tf_tensor_to_ros2_attribute(
+            converted_value_to_ros2 = tf_tensor_data_to_ros2_attribute_data(
                 step[feature.tf_name], feature.tf_type, ros2_msg_type
             )
             setattr(ros2_msg, feature.tf_name, converted_value_to_ros2)
         for feature in self.observation_spec:
             ros2_msg_type = type(getattr(ros2_msg.observation, feature.tf_name))
-            converted_value_to_ros2 = tf_tensor_to_ros2_attribute(
+            converted_value_to_ros2 = tf_tensor_data_to_ros2_attribute_data(
                 observation[feature.tf_name], feature.tf_type, ros2_msg_type
             )
             setattr(ros2_msg.observation, feature.tf_name, converted_value_to_ros2)
         for feature in self.action_spec:
             ros2_msg_type = type(getattr(ros2_msg.action, feature.tf_name))
-            converted_value_to_ros2 = tf_tensor_to_ros2_attribute(
+            converted_value_to_ros2 = tf_tensor_data_to_ros2_attribute_data(
                 action[feature.tf_name], feature.tf_type, ros2_msg_type
             )
             setattr(ros2_msg.action, feature.tf_name, converted_value_to_ros2)
