@@ -63,7 +63,7 @@ class StreamOrchestrator(Node):
             step_spec=self.step_spec,
         )
 
-        self.triggering_topic = None 
+        self.is_triggering_topic = None 
         self._init_observation_topics()
         self._init_action_topics()
 
@@ -74,10 +74,10 @@ class StreamOrchestrator(Node):
     def _init_observation_topics(self):
         # create subscriptions for all observation topics
         for observation in self.observation_spec:
-            callback = self.create_dynamic_callback(observation.topic)
+            callback = self.create_dynamic_observation_callback(observation.ros_topic_name)
             self.create_subscription(
-                observation.type,
-                observation.topic,
+                observation.ros_type,
+                observation.ros_topic_name,
                 callback,
                 10,
             )
@@ -85,28 +85,28 @@ class StreamOrchestrator(Node):
     def _init_action_topics(self):
         # create publishers for all action topics
         for action in self.action_spec:
-            callback = self.create_dynamic_callback(action.topic)
+            callback = self.create_dynamic_action_callback(action.ros_topic_name)
             self.create_subscription(
-                action.type,
-                action.topic,
-                10,
-                callback
+                action.ros_type,
+                action.ros_topic_name,
+                callback,
+                10
             )
-            if action.triggering_topic: 
-                self.triggering_topic = action.triggering_topic
-        if self.triggering_topic is None:
+            if action.is_triggering_topic: 
+                self.is_triggering_topic = action.is_triggering_topic
+        if self.is_triggering_topic is None:
             raise RuntimeError("No triggering topic found in action spec, need to choose one action topic as triggering topic")
 
     def create_dynamic_action_callback(self, topic_name):
-        def action_callback(self, msg):
+        def action_callback(msg):
             # Custom logic here, possibly using topic_name
-            self.logger.info(f"Received message on {topic_name}: {msg}")
+            self.logger.info(f"Received action message on {topic_name}")
         return action_callback
 
     def create_dynamic_observation_callback(self, topic_name):
-        def observation_callback(self, msg):
+        def observation_callback(msg):
             # Custom logic here, possibly using topic_name
-            self.logger.info(f"Received message on {topic_name}: {msg}")
+            self.logger.info(f"Received observation message on {topic_name}")
         return observation_callback
     
         

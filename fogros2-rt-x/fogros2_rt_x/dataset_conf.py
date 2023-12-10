@@ -64,7 +64,7 @@ OBSERVATION_SPEC = [
 
 ACTION_SPEC = [
     FeatureSpec("open_gripper", Scalar(dtype=tf.bool)),
-    FeatureSpec("rotation_delta", Tensor(shape=(3,), dtype=tf.float32)),
+    FeatureSpec("rotation_delta", Tensor(shape=(3,), dtype=tf.float32), is_triggering_topic=True),
     FeatureSpec("terminate_episode", Scalar(dtype=tf.float64)),
     FeatureSpec("world_vector", Tensor(shape=(3,), dtype=tf.float32)),
 ]
