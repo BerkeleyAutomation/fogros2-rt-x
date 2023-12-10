@@ -274,6 +274,11 @@ class DatasetFeatureSpec:
         self.action_tf_dict = self.spec_to_dict(action_spec)
         self.step_tf_dict = self.spec_to_dict(step_spec)
 
+        self.check_spec(observation_spec)
+        self.check_spec(action_spec)
+        self.check_spec(step_spec)
+        
+
         print("=== observation spec ===")
         print(self.tf_spec_definition_to_ros2_msg_definition(self.observation_tf_dict))
         print("=== action spec ===")
@@ -282,6 +287,41 @@ class DatasetFeatureSpec:
         print(self.tf_spec_definition_to_ros2_msg_definition(self.step_tf_dict))
 
 
+    def check_spec(self, spec):
+        """
+        Checks the feature specification.
+
+        Args:
+            spec (list): The feature specification.
+
+        Raises:
+            ValueError: If the feature specification is invalid.
+        """
+        if not isinstance(spec, list):
+            raise ValueError(
+                f"spec must be a list, got {type(spec)} instead: {spec}"
+            )
+        for feature in spec:
+            if not isinstance(feature, FeatureSpec):
+                raise ValueError(
+                    f"feature must be a FeatureSpec, got {type(feature)} instead: {feature}"
+                )
+        
+        if spec == self.action_spec:
+            # check if there is a triggering topic
+            triggering_topic_count = 0
+            for feature in spec:
+                if feature.is_triggering_topic:
+                    triggering_topic_count += 1
+            if triggering_topic_count > 1:
+                raise ValueError(
+                    f"feature spec can only have one triggering topic, got {triggering_topic_count} instead"
+                )
+            if triggering_topic_count == 0:
+                raise ValueError(
+                    f"feature spec must have one triggering topic, got {triggering_topic_count} instead"
+                )
+        
     def spec_to_dict(self, spec):
         """
         Converts the feature specification to a dictionary.

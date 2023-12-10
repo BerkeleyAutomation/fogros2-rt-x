@@ -105,6 +105,19 @@ class StreamOrchestrator(Node):
             # Custom logic here, possibly using topic_name
             self.logger.info(f"Received action message on {topic_name}")
             setattr(self.action_msg, topic_name, msg)
+
+            if topic_name == self.is_triggering_topic:
+                self.step_msg = Step()
+                self.step_msg.action = self.action_msg
+                self.step_msg.observation = self.observation_msg
+                # TODO: fill in the rest of the step_msg
+                self.step_msg.reward = 0.0 
+                self.step_msg.discount = 1.0
+                self.step_msg.is_first = False
+                self.step_msg.is_last = False
+                self.step_msg.is_terminal = False
+
+                self.publisher.publish(self.step_msg)
         return functools.partial(action_callback, self)
 
     def create_dynamic_observation_callback(self, topic_name):

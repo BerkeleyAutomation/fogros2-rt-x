@@ -120,6 +120,8 @@ class DatasetReplayer(Node):
 
     def timer_callback_separate_topics(self):
         for step in self.episode["steps"]:
+            trigger_topic_msg = None 
+            trigger_topic = None
             for observation in self.feature_spec.observation_spec:
                 msg = observation.convert_tf_tensor_data_to_ros2_msg(
                     step["observation"][observation.tf_name]
@@ -128,19 +130,32 @@ class DatasetReplayer(Node):
                 self.topic_name_to_publisher_dict[observation.ros_topic_name].publish(msg)
             
             for action in self.feature_spec.action_spec:
+                if action.is_triggering_topic:
+                    trigger_topic_msg = action.convert_tf_tensor_data_to_ros2_msg(
+                        step["action"][action.tf_name]
+                    )
+                    trigger_topic = action.ros_topic_name
+                    # skip triggering topic to process it later (so that we can wrap up with the latest action)
+                    continue
                 msg = action.convert_tf_tensor_data_to_ros2_msg(
                     step["action"][action.tf_name]
                 )
                 self.logger.info(f"Publishing action {action.tf_name} on topic {action.ros_topic_name}")
                 self.topic_name_to_publisher_dict[action.ros_topic_name].publish(msg)
-            
+
+            # TODO: steps
             # for step in self.feature_spec.step_spec:
             #     msg = step.convert_tf_tensor_data_to_ros2_msg(
             #         self.episode["step"][step.name]
             #     )
             #     self.logger.info(f"Publishing step {step.name} on topic {step.ros_topic_name}")
             #     self.topic_name_to_publisher_dict[step.ros_topic_name].publish(msg)
-            
+
+
+            # wrap up with the latest action
+            self.topic_name_to_publisher_dict[trigger_topic].publish(trigger_topic_msg)
+
+
         self.episode = next(iter(self.dataset))
 
     def timer_callback_single_topic(self):
