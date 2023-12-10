@@ -41,14 +41,14 @@ colcon build
 Run dataset generator (stores ROS2 message as RLDS format) with the following instructions
 ```
 source install/setup.bash
-ros2 run ros2 run fogros2_rt_x recorder
+ros2 launch fogros2_rt_x data_collector.launch.py
 ```
 
 #### Replaying with existing datasets in Open-X-Embodiment
 You can replay existing datasets in ROS2 with 
 ```
 source install/setup.bash
-ros2 run ros2 run fogros2_rt_x replayer
+ros2 launch fogros2_rt_x replayer.launch.py
 ```
 TODO: currently it plays the bridge dataset. We have not tested other datasets. 
 

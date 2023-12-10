@@ -66,13 +66,15 @@ class StreamOrchestrator(Node):
         # this helps to determine the topic that triggers a new step message
         self.feature_spec.check_triggering_topic()
 
-        self.is_triggering_topic = None 
+        self.triggering_topic = None 
         self._init_observation_topics()
         self._init_action_topics()
 
         self.observation_msg = Observation()
         self.action_msg = Action()
         self.step_msg = Step()
+
+        self.publisher = self.create_publisher(Step, "step_info", 10)
 
 
     def _init_observation_topics(self):
@@ -97,8 +99,8 @@ class StreamOrchestrator(Node):
                 10
             )
             if action.is_triggering_topic: 
-                self.is_triggering_topic = action.is_triggering_topic
-        if self.is_triggering_topic is None:
+                self.triggering_topic = action.ros_topic_name
+        if self.triggering_topic is None:
             raise RuntimeError("No triggering topic found in action spec, need to choose one action topic as triggering topic")
 
     def _init_step_information_topics(self):
@@ -118,7 +120,7 @@ class StreamOrchestrator(Node):
             self.logger.info(f"Received action message on {topic_name}")
             setattr(self.action_msg, topic_name, msg)
 
-            if topic_name == self.is_triggering_topic:
+            if topic_name == self.triggering_topic:
                 self.step_msg.action = self.action_msg
                 self.step_msg.observation = self.observation_msg
                 self.publisher.publish(self.step_msg)
