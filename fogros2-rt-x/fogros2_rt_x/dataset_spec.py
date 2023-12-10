@@ -274,6 +274,14 @@ class DatasetFeatureSpec:
         self.action_tf_dict = self.spec_to_dict(action_spec)
         self.step_tf_dict = self.spec_to_dict(step_spec)
 
+        print("=== observation spec ===")
+        print(self.tf_spec_definition_to_ros2_msg_definition(self.observation_tf_dict))
+        print("=== action spec ===")
+        print(self.tf_spec_definition_to_ros2_msg_definition(self.action_tf_dict))
+        print("=== step spec ===")
+        print(self.tf_spec_definition_to_ros2_msg_definition(self.step_tf_dict))
+
+
     def spec_to_dict(self, spec):
         """
         Converts the feature specification to a dictionary.
@@ -374,6 +382,24 @@ class DatasetFeatureSpec:
             setattr(ros2_msg.action, feature.tf_name, converted_value_to_ros2)
 
         return ros2_msg
+    
+
+    def tf_spec_definition_to_ros2_msg_definition(self, spec):
+        """
+        Converts a TensorFlow feature specification to a ROS2 message definition.
+
+        Args:
+            spec (dict): The TensorFlow feature specification.
+
+        Returns:
+            str: The ROS2 message definition.
+        """
+        return "\n".join(
+            [
+                tf_feature_definition_to_ros_msg_str(name, feature)
+                for name, feature in spec.items()
+            ]
+        )
 
 
 # def cast_tensor_to_class_type(tensor, class_type):

@@ -1,4 +1,4 @@
-bool open_gripper 
-float32[] rotation_delta 
-float32 terminate_episode
-float32[] world_vector
+std_msgs/Bool open_gripper
+std_msgs/Float32MultiArray rotation_delta
+std_msgs/Float64 terminate_episode
+std_msgs/Float32MultiArray world_vector
