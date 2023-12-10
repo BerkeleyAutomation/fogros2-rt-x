@@ -277,7 +277,6 @@ class DatasetFeatureSpec:
         self.check_spec(observation_spec)
         self.check_spec(action_spec)
         self.check_spec(step_spec)
-        
 
         print("=== observation spec ===")
         print(self.tf_spec_definition_to_ros2_msg_definition(self.observation_tf_dict))
@@ -307,20 +306,21 @@ class DatasetFeatureSpec:
                     f"feature must be a FeatureSpec, got {type(feature)} instead: {feature}"
                 )
         
-        if spec == self.action_spec:
-            # check if there is a triggering topic
-            triggering_topic_count = 0
-            for feature in spec:
-                if feature.is_triggering_topic:
-                    triggering_topic_count += 1
-            if triggering_topic_count > 1:
-                raise ValueError(
-                    f"feature spec can only have one triggering topic, got {triggering_topic_count} instead"
-                )
-            if triggering_topic_count == 0:
-                raise ValueError(
-                    f"feature spec must have one triggering topic, got {triggering_topic_count} instead"
-                )
+    def check_triggering_topic(self, spec):
+        # check if there is a triggering topic
+        triggering_topic_count = 0
+        for feature in spec:
+            if feature.is_triggering_topic:
+                triggering_topic_count += 1
+        if triggering_topic_count > 1:
+            raise ValueError(
+                f"feature spec can only have one triggering topic, got {triggering_topic_count} instead"
+            )
+        
+        if triggering_topic_count == 0:
+            raise ValueError(
+                f"feature spec must have one triggering topic, got {triggering_topic_count} instead"
+            )
         
     def spec_to_dict(self, spec):
         """

@@ -45,9 +45,6 @@ from .dataset_spec import DatasetFeatureSpec
 from .dataset_conf import *
 import functools
 
-# code borrowed from https://github.com/rail-berkeley/oxe_envlogger/blob/main/oxe_envlogger/dm_env.py
-import dm_env
-
 
 class StreamOrchestrator(Node):
    
@@ -64,6 +61,10 @@ class StreamOrchestrator(Node):
             action_spec=self.action_spec,
             step_spec=self.step_spec,
         )
+
+        # check if the triggering topic is in the action spec
+        # this helps to determine the topic that triggers a new step message
+        self.feature_spec.check_triggering_topic()
 
         self.is_triggering_topic = None 
         self._init_observation_topics()
