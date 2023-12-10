@@ -43,6 +43,7 @@ import tensorflow_datasets as tfds
 from envlogger.backends import tfds_backend_writer
 from .dataset_spec import DatasetFeatureSpec
 from .dataset_conf import *
+import functools
 
 # code borrowed from https://github.com/rail-berkeley/oxe_envlogger/blob/main/oxe_envlogger/dm_env.py
 import dm_env
@@ -52,6 +53,7 @@ class StreamOrchestrator(Node):
    
     def __init__(self):
         super().__init__("fogros2_rt_x_orchestrator")
+        self.logger = self.get_logger()
 
         self.observation_spec = OBSERVATION_SPEC
         self.action_spec = ACTION_SPEC
@@ -70,6 +72,7 @@ class StreamOrchestrator(Node):
         self.observation_msg = Observation()
         self.action_msg = Action()
         self.step_msg = Step()
+
 
     def _init_observation_topics(self):
         # create subscriptions for all observation topics
@@ -98,16 +101,16 @@ class StreamOrchestrator(Node):
             raise RuntimeError("No triggering topic found in action spec, need to choose one action topic as triggering topic")
 
     def create_dynamic_action_callback(self, topic_name):
-        def action_callback(msg):
+        def action_callback(self, msg):
             # Custom logic here, possibly using topic_name
             self.logger.info(f"Received action message on {topic_name}")
-        return action_callback
+        return functools.partial(action_callback, self)
 
     def create_dynamic_observation_callback(self, topic_name):
-        def observation_callback(msg):
+        def observation_callback(self, msg):
             # Custom logic here, possibly using topic_name
             self.logger.info(f"Received observation message on {topic_name}")
-        return observation_callback
+        return functools.partial(observation_callback, self)
     
         
 def main(args=None):
