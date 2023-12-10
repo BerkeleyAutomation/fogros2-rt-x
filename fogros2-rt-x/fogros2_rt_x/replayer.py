@@ -56,26 +56,51 @@ class DatasetReplayer(Node):
         episode (Episode): The current episode being replayed.
     """
 
-    def __init__(self, dataset_name):
+    def __init__(self):
         super().__init__("fogros2_rt_x_replayer")
 
-        self.publisher = self.create_publisher(Step, "step_info", 10)
+        self.declare_parameter("dataset_name", DATASET_NAME)
+        dataset_name = self.get_parameter("dataset_name").value
+
+        self.declare_parameter(
+            "replay_type", "as_single_topic"
+        )  # or as_single_topic
+        replay_type = self.get_parameter("replay_type").value
+
         self.dataset = load_rlds_dataset(dataset_name)
         self.logger = self.get_logger()
         self.logger.info("Loading Dataset " + str(get_dataset_info([dataset_name])))
-
-        timer_period = 10  # seconds
-        self.create_timer(timer_period, self.timer_callback)
 
         self.feature_spec = DatasetFeatureSpec(
             observation_spec=OBSERVATION_SPEC,
             action_spec=ACTION_SPEC,
             step_spec=STEP_SPEC,
         )
-
         self.episode = next(iter(self.dataset))
 
-    def timer_callback(self):
+        if replay_type == "as_separate_topics":
+            self.init_publisher_separate_topics()
+        elif replay_type == "as_single_topic":
+            self.init_publisher_single_topic()
+        else:
+            raise ValueError(
+                "Invalid replay_type: "
+                + str(replay_type)
+                + ". Must be one of: as_separate_topics, as_single_topic."
+            )
+
+    def init_publisher_separate_topics(self):
+        pass
+
+    def init_publisher_single_topic(self):
+        self.publisher = self.create_publisher(Step, "step_info", 10)
+        callback = self.timer_callback_single_topic
+        self.create_timer(10, callback)
+
+    def timer_callback_separate_topics(self):
+        pass
+
+    def timer_callback_single_topic(self):
         for step in self.episode["steps"]:
             msg = self.feature_spec.convert_tf_step_to_ros2_msg(
                 step, step["action"], step["observation"]
@@ -86,7 +111,7 @@ class DatasetReplayer(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = DatasetReplayer(dataset_name=DATASET_NAME)
+    node = DatasetReplayer()
 
     rclpy.spin(node)
 
