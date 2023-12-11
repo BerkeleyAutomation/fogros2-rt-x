@@ -89,7 +89,7 @@ def ros2_msg_data_to_tf_tensor_data(ros2_attribute, tf_feature):
         image_message = bridge.imgmsg_to_cv2(ros2_attribute)
         return image_message
     elif isinstance(tf_feature, tfds.features.Text):
-        return ros2_attribute
+        return ros2_attribute.data
     elif isinstance(tf_feature, tfds.features.Scalar):
         return ros2_attribute.data
     elif isinstance(tf_feature, tfds.features.Tensor):
@@ -97,12 +97,12 @@ def ros2_msg_data_to_tf_tensor_data(ros2_attribute, tf_feature):
         # Retrieve the shape information from the MultiArrayLayout
         original_shape = [dim.size for dim in ros2_attribute.layout.dim]
         # Convert the data into a TensorFlow tensor
-        tensor = tf.constant(data, dtype=tf.float64)
+        tensor = tf.constant(data, dtype=tf_feature.dtype)
 
         # Reshape the tensor to its original shape
         reshaped_tensor = tf.reshape(tensor, original_shape)
         # Convert the data to a numpy array and then reshape it
-        return reshaped_tensor
+        return reshaped_tensor.numpy()
     else:
         raise NotImplementedError(
             f"feature type {type(tf_feature)} for {tf_feature} not implemented"
@@ -428,6 +428,13 @@ class DatasetFeatureSpec:
         ros2_msg.observation = Observation()
         ros2_msg.action = Action()
         for feature in self.step_spec:
+            if feature.tf_name == "discount":
+                # TODO: missing field 
+                from std_msgs.msg import Float64
+                num = Float64()
+                num.data = 1.0
+                setattr(ros2_msg, feature.tf_name, num)
+                continue
             ros2_msg_type = type(getattr(ros2_msg, feature.tf_name))
             converted_value_to_ros2 = tf_tensor_data_to_ros2_attribute_data(
                 step[feature.tf_name], feature.tf_type, ros2_msg_type

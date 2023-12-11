@@ -42,7 +42,8 @@ DATASET_NAME = "bridge"
 # TODO: other information such as citation
 
 # the path can be a local directory or a google cloud storage bucket
-SAVE_PATH = "/home/ubuntu/open-x-embodiment/playground_ds"
+SAVE_PATH = "gs://test-fogros-rtx-example"
+# "/home/ubuntu/open-x-embodiment/playground_ds"
 # "gs://test-fogros-rtx-example"
 
 # this is used for bigquery project metadata storage

@@ -63,14 +63,14 @@ class DatasetReplayer(Node):
         self.declare_parameter("dataset_name", DATASET_NAME)
         dataset_name = self.get_parameter("dataset_name").value
 
-        self.declare_parameter("per_episode_interval", 10)  # second
+        self.declare_parameter("per_episode_interval", 5)  # second
         self.per_episode_interval = self.get_parameter("per_episode_interval").value
 
         self.declare_parameter("per_step_interval", 0.2)  # second
         self.per_step_interval = self.get_parameter("per_step_interval").value
 
         self.declare_parameter(
-            "replay_type", "as_separate_topics"
+            "replay_type", "as_single_topic"
         )  # as_single_topic | as_separate_topics
         replay_type = self.get_parameter("replay_type").value
 
