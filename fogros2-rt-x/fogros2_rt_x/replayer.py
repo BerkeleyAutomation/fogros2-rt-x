@@ -39,6 +39,7 @@ from .dataset_utils import *
 from fogros2_rt_x_msgs.msg import Step, Observation, Action
 from .dataset_spec import DatasetFeatureSpec
 from .dataset_conf import *
+import time
 
 
 class DatasetReplayer(Node):
@@ -62,8 +63,11 @@ class DatasetReplayer(Node):
         self.declare_parameter("dataset_name", DATASET_NAME)
         dataset_name = self.get_parameter("dataset_name").value
 
-        self.declare_parameter("per_episode_interval", 10) # second
+        self.declare_parameter("per_episode_interval", 10)  # second
         self.per_episode_interval = self.get_parameter("per_episode_interval").value
+
+        self.declare_parameter("per_step_interval", 0.2)  # second
+        self.per_step_interval = self.get_parameter("per_step_interval").value
 
         self.declare_parameter(
             "replay_type", "as_separate_topics"
@@ -92,26 +96,27 @@ class DatasetReplayer(Node):
                 + str(replay_type)
                 + ". Must be one of: as_separate_topics, as_single_topic."
             )
-        
-        
 
     def init_publisher_separate_topics(self):
         for observation in self.feature_spec.observation_spec:
             publisher = self.create_publisher(
-                observation.ros_type, observation.ros_topic_name, 10)
+                observation.ros_type, observation.ros_topic_name, 10
+            )
             self.topic_name_to_publisher_dict[observation.ros_topic_name] = publisher
-        
+
         for action in self.feature_spec.action_spec:
             publisher = self.create_publisher(
-                action.ros_type, action.ros_topic_name, 10)
+                action.ros_type, action.ros_topic_name, 10
+            )
             self.topic_name_to_publisher_dict[action.ros_topic_name] = publisher
-        
+
         for step in self.feature_spec.step_spec:
-            publisher = self.create_publisher(
-                step.ros_type, step.ros_topic_name, 10)
+            publisher = self.create_publisher(step.ros_type, step.ros_topic_name, 10)
             self.topic_name_to_publisher_dict[step.ros_topic_name] = publisher
-        
-        self.create_timer(self.per_episode_interval, self.timer_callback_separate_topics)
+
+        self.create_timer(
+            self.per_episode_interval, self.timer_callback_separate_topics
+        )
 
     def init_publisher_single_topic(self):
         self.publisher = self.create_publisher(Step, "step_info", 10)
@@ -122,14 +127,20 @@ class DatasetReplayer(Node):
         for step in self.episode["steps"]:
             for observation in self.feature_spec.observation_spec:
                 if observation.tf_name not in step["observation"]:
-                    self.logger.warn(f"Observation {observation.tf_name} not found in step data")
+                    self.logger.warn(
+                        f"Observation {observation.tf_name} not found in step data"
+                    )
                     continue
                 msg = observation.convert_tf_tensor_data_to_ros2_msg(
                     step["observation"][observation.tf_name]
                 )
-                self.logger.info(f"Publishing observation {observation.tf_name} on topic {observation.ros_topic_name}")
-                self.topic_name_to_publisher_dict[observation.ros_topic_name].publish(msg)
-            
+                self.logger.info(
+                    f"Publishing observation {observation.tf_name} on topic {observation.ros_topic_name}"
+                )
+                self.topic_name_to_publisher_dict[observation.ros_topic_name].publish(
+                    msg
+                )
+
             for action in self.feature_spec.action_spec:
                 if action.tf_name not in step["action"]:
                     self.logger.warn(f"Action {action.tf_name} not found in step data")
@@ -137,18 +148,28 @@ class DatasetReplayer(Node):
                 msg = action.convert_tf_tensor_data_to_ros2_msg(
                     step["action"][action.tf_name]
                 )
-                self.logger.info(f"Publishing action {action.tf_name} on topic {action.ros_topic_name}")
+                self.logger.info(
+                    f"Publishing action {action.tf_name} on topic {action.ros_topic_name}"
+                )
                 self.topic_name_to_publisher_dict[action.ros_topic_name].publish(msg)
 
             for step_feature in self.feature_spec.step_spec:
                 if step_feature.tf_name not in step:
-                    self.logger.warn(f"Step {step_feature.tf_name} not found in step data")
+                    self.logger.warn(
+                        f"Step {step_feature.tf_name} not found in step data"
+                    )
                     continue
                 msg = step_feature.convert_tf_tensor_data_to_ros2_msg(
                     step[step_feature.tf_name]
                 )
-                self.logger.info(f"Publishing step {step_feature.tf_name} on topic {step_feature.ros_topic_name}")
-                self.topic_name_to_publisher_dict[step_feature.ros_topic_name].publish(msg)
+                self.logger.info(
+                    f"Publishing step {step_feature.tf_name} on topic {step_feature.ros_topic_name}"
+                )
+                self.topic_name_to_publisher_dict[step_feature.ros_topic_name].publish(
+                    msg
+                )
+
+            time.sleep(self.per_step_interval)
 
         self.episode = next(iter(self.dataset))
 
@@ -162,9 +183,8 @@ class DatasetReplayer(Node):
 
 
 def main(args=None):
-
     # tf.experimental.numpy.experimental_enable_numpy_behavior()
-    
+
     rclpy.init(args=args)
     node = DatasetReplayer()
 

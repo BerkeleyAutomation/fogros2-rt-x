@@ -37,7 +37,7 @@ import tensorflow_datasets as tfds
 from fogros2_rt_x_msgs.msg import Step, Observation, Action
 from cv_bridge import CvBridge
 from std_msgs.msg import MultiArrayLayout, MultiArrayDimension
-
+from sensor_msgs.msg import Image
 
 tf_dtype_to_ros_class_map = {
     tf.float32: "std_msgs/Float32",
@@ -82,6 +82,9 @@ def ros2_msg_data_to_tf_tensor_data(ros2_attribute, tf_feature):
     any: The TensorFlow feature.
     """
     if isinstance(tf_feature, tfds.features.Image):
+        if ros2_attribute == Image():
+            print("empty image")
+            return np.zeros((480, 640, 3), dtype=np.uint8)
         bridge = CvBridge()
         image_message = bridge.imgmsg_to_cv2(ros2_attribute)
         return image_message
