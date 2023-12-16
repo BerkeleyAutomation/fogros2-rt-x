@@ -3,5 +3,7 @@ std_msgs/Float64 discount
 std_msgs/Bool is_first
 std_msgs/Bool is_last
 std_msgs/Bool is_terminal
+std_msgs/Float32MultiArray language_embedding
+std_msgs/String language_instruction
 Action action 
 Observation observation

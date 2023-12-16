@@ -1,4 +1,1 @@
-std_msgs/Bool open_gripper
-std_msgs/Float32MultiArray rotation_delta
-std_msgs/Float64 terminate_episode
-std_msgs/Float32MultiArray world_vector
+std_msgs/Float32MultiArray action

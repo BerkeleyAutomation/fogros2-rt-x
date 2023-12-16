@@ -44,8 +44,8 @@ def generate_launch_description():
         executable="replayer",
         output="screen",
         parameters = [
-            {"dataset_name": "bridge"}, 
-            {"replay_type": "as_separate_topics"}, 
+            {"dataset_name": "berkeley_fanuc_manipulation"}, 
+            {"replay_type": "as_single_topic"}, 
         ]
     )
 

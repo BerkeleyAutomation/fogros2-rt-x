@@ -91,7 +91,8 @@ FogROS2-RT-X opens up one-to-one mapping of Observation/Action/Step field to ROS
 You can replay existing datasets in ROS2 with 
 ```
 source install/setup.bash
-ros2 launch fogros2_rt_x replayer.launch.py
+ros2 run fogros2_rt_x replayer --ros-args -r dataset_name:=bridge 
+# replace with yours, e.g. berkeley_fanuc_manipulation
 ```
 You may edit [replayer.launch.py](./fogros2-rt-x/launch/replayer.launch.py) for different datasets. 
 

@@ -142,12 +142,16 @@ class DatasetReplayer(Node):
                 )
 
             for action in self.feature_spec.action_spec:
-                if action.tf_name not in step["action"]:
-                    self.logger.warn(f"Action {action.tf_name} not found in step data")
-                    continue
-                msg = action.convert_tf_tensor_data_to_ros2_msg(
-                    step["action"][action.tf_name]
-                )
+                if type(step["action"]) is not dict:
+                    # action is only one tensor/datatype, not a dictionary
+                    msg = action.convert_tf_tensor_data_to_ros2_msg(step["action"])
+                else:
+                    if action.tf_name not in step["action"]:
+                        self.logger.warn(f"Action {action.tf_name} not found in step data")
+                        continue
+                    msg = action.convert_tf_tensor_data_to_ros2_msg(
+                        step["action"][action.tf_name]
+                    )
                 self.logger.info(
                     f"Publishing action {action.tf_name} on topic {action.ros_topic_name}"
                 )

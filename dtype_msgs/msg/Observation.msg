@@ -1,4 +1,4 @@
+sensor_msgs/Image wrist_image
 sensor_msgs/Image image
-std_msgs/Float32MultiArray natural_language_embedding
-std_msgs/String natural_language_instruction
+std_msgs/Float32MultiArray end_effector_state
 std_msgs/Float32MultiArray state
