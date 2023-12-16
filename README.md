@@ -9,7 +9,8 @@ This repository contains the code for the fogros2-rt-x project. It is designed t
 1. Install ROS2 following the instructions on the official ROS2 website.
 2. Install python dependencies.
 ```
-pip install google-cloud-bigquery tensorflow envlogger[tfds]
+apt-get install libgmp3-dev
+pip install google-cloud-bigquery tensorflow envlogger[tfds] numpy
 ```
 Don't use conda environment. It [does not work well](https://docs.ros.org/en/foxy/How-To-Guides/Using-Python-Packages.html) with ROS/ROS2.
 3. clone the repo
@@ -28,7 +29,7 @@ source install/setup.bash
 ```
 8. generate ROS2 message files for the tensorflow dataset types and re-compile the repo
 ```
-ros2 ros2 fgr config
+ros2 fgr config
 colcon build
 ```
 
@@ -37,6 +38,11 @@ colcon build
 #### Google Cloud Setup
 
 1. Install google cloud command line tools with the following link: [Google Cloud SDK](https://cloud.google.com/sdk/docs/install#deb)
+```
+curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+sudo apt-get update && sudo apt-get install google-cloud-cli
+```
 2. Login to your Google Cloud account using the command line:
     ```
     gcloud auth application-default login
