@@ -45,6 +45,7 @@ from .dataset_spec import DatasetFeatureSpec
 from .dataset_conf import *
 import functools
 import time 
+import threading
 
 class StreamOrchestrator(Node):
     def __init__(self):
@@ -71,6 +72,7 @@ class StreamOrchestrator(Node):
         self.triggering_topic = None
         self._init_observation_topics()
         self._init_action_topics()
+        self._init_step_information_topics()
 
         self.observation_msg = Observation()
         self.action_msg = Action()
@@ -91,6 +93,19 @@ class StreamOrchestrator(Node):
                 10,
             )
 
+    def _init_step_information_topics(self):
+        # create subscriptions for all observation topics
+        for step_info in self.step_spec:
+            callback = self.create_dynamic_step_callback(
+                step_info.ros_topic_name
+            )
+            self.create_subscription(
+                step_info.ros_type,
+                step_info.ros_topic_name,
+                callback,
+                10,
+            )
+
     def _init_action_topics(self):
         # create publishers for all action topics
         for action in self.action_spec:
@@ -105,14 +120,9 @@ class StreamOrchestrator(Node):
                 "No triggering topic found in action spec, need to choose one action topic as triggering topic"
             )
 
-    def _init_step_information_topics(self):
-        for step in self.step_spec:
-            callback = self.create_dynamic_step_callback(step.ros_topic_name)
-            self.create_subscription(step.ros_type, step.ros_topic_name, callback, 10)
-
     def create_dynamic_action_callback(self, topic_name):
         def action_callback(self, msg):
-            # self.logger.info(f"Received action message on {topic_name}")
+            self.logger.info(f"Received action message on {topic_name}")
             setattr(self.action_msg, topic_name, msg)
 
             if topic_name == self.triggering_topic:
@@ -124,29 +134,25 @@ class StreamOrchestrator(Node):
 
     def create_dynamic_observation_callback(self, topic_name):
         def observation_callback(self, msg):
-            # self.logger.info(f"Received observation message on {topic_name}")
+            self.logger.info(f"Received observation message on {topic_name}")
             setattr(self.observation_msg, topic_name, msg)
 
         return functools.partial(observation_callback, self)
 
     def create_dynamic_step_callback(self, topic_name):
         def step_callback(self, msg):
-            # self.logger.info(f"Received step message on {topic_name}")
+            self.logger.info(f"Received step message on {topic_name}")
             setattr(self.step_msg, topic_name, msg)
 
         return functools.partial(step_callback, self)
 
-    # def send_step_msg(self):
-    #     self.publisher.publish(self.step_msg)
-    #     self.timer.cancel()
-    #     self.timer.destroy()
-
-    # TODO: sleep alignment here is wrong because it is not aligned with the step message
     def send_step_msg_with_alignment_wait_time(self):
-        # create a ros2 timer to send step message with alignment wait time
-        # self.timer = self.create_timer(self.alignment_wait_time, self.send_step_msg)
-        time.sleep(self.alignment_wait_time)
-        self.publisher.publish(self.step_msg)
+        def publishing_thread():
+            time.sleep(self.alignment_wait_time)
+            self.logger.info("Publishing step message")
+            self.publisher.publish(self.step_msg)
+        self.thread = threading.Thread(target=publishing_thread)
+        self.thread.start()
 
 
 def main(args=None):

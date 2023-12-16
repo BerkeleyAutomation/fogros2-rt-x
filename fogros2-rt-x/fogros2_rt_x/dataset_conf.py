@@ -42,7 +42,7 @@ DATASET_NAME = "bridge"
 # TODO: other information such as citation
 
 # the path can be a local directory or a google cloud storage bucket
-SAVE_PATH = "gs://test-fogros-rtx-example"
+SAVE_PATH = "/home/ubuntu/open-x-embodiment/playground_ds"
 # "/home/ubuntu/open-x-embodiment/playground_ds"
 # "gs://test-fogros-rtx-example"
 

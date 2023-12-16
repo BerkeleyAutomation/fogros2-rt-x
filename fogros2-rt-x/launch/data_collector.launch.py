@@ -44,6 +44,12 @@ def generate_launch_description():
         package="fogros2_rt_x",
         executable="orchestrator",
         output="screen",
+        parameters = [
+            # a step message is generated when it receives a message from triggering topic 
+            # and then wait for alignment_wait_time before sending the step message
+            # the alignment_wait_time is to make sure the larger messages are received
+            {"alignment_wait_time": 0.05}, 
+        ]
     )
     ld.add_action(orchestrator_node)
 

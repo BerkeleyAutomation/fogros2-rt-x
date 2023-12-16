@@ -43,7 +43,10 @@ def generate_launch_description():
         package="fogros2_rt_x",
         executable="replayer",
         output="screen",
-        arguments=["--dataset_name", "bridge"],
+        parameters = [
+            {"dataset_name": "bridge"}, 
+            {"replay_type": "as_separate_topics"}, 
+        ]
     )
 
     ld.add_action(replayer_node)
