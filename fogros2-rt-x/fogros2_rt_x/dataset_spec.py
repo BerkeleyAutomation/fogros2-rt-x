@@ -439,12 +439,21 @@ class DatasetFeatureSpec:
                 observation[feature.tf_name], feature.tf_type, ros2_msg_type
             )
             setattr(ros2_msg.observation, feature.tf_name, converted_value_to_ros2)
-        for feature in self.action_spec:
+        
+        if type(action) is not dict:
+            feature = self.action_spec[0] # only one element in feature spec
             ros2_msg_type = type(getattr(ros2_msg.action, feature.tf_name))
             converted_value_to_ros2 = tf_tensor_data_to_ros2_attribute_data(
-                action[feature.tf_name], feature.tf_type, ros2_msg_type
+                action, feature.tf_type, ros2_msg_type
             )
             setattr(ros2_msg.action, feature.tf_name, converted_value_to_ros2)
+        else:
+            for feature in self.action_spec:
+                ros2_msg_type = type(getattr(ros2_msg.action, feature.tf_name))
+                converted_value_to_ros2 = tf_tensor_data_to_ros2_attribute_data(
+                    action[feature.tf_name], feature.tf_type, ros2_msg_type
+                )
+                setattr(ros2_msg.action, feature.tf_name, converted_value_to_ros2)
 
         return ros2_msg
 
