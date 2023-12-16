@@ -119,7 +119,7 @@ class ConfigVerb(VerbExtension):
             elif os.path.exists(msg_repo_path_src):
                 self.msg_path = msg_repo_path_src
             else:
-                raise ValueError("default msg_path not found, checked " + msg_repo_path + " and " + msg_repo_path_src + "")
+                raise ValueError("default msg_path not found, checked " + msg_repo_path + " and " + msg_repo_path_src + " please specify --msg_path")
         else:
             if args.msg_path[0] != "/":
                 raise ValueError("msg_path must be an absolute path")

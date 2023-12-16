@@ -11,20 +11,28 @@ This repository contains the code for the fogros2-rt-x project. It is designed t
 ```
 pip install google-cloud-bigquery tensorflow envlogger[tfds]
 ```
-Don't use conda environment, which does not work well with ROS/ROS2.
+Don't use conda environment. It [does not work well](https://docs.ros.org/en/foxy/How-To-Guides/Using-Python-Packages.html) with ROS/ROS2.
 3. clone the repo
 ```
-mkdir -p ~/fog_ws/src
+export FOG_WS=~/fog_ws
+mkdir -p $FOG_WS
+cd $FOG_WS
 git clone https://github.com/KeplerC/fogros2-rt-x.git
 ```
-4. Setup google cloud with Google Cloud Setup instructions 
-5. Edit [Configuration File](./fogros2-rt-x/fogros2_rt_x/dataset_conf.py)
-6. (To be automated) Edit [ROS2 Message Definition](./fogros2_rt_x_msgs/msg/) to align with the configuration file
+4. Edit [Configuration File](./fogros2-rt-x/fogros2_rt_x/dataset_conf.py)
 7. compile the repo
 ```
-cd ~/fog_ws
+cd $FOG_WS
+colcon build
+source install/setup.bash
+```
+8. generate ROS2 message files for the tensorflow dataset types and re-compile the repo
+```
+ros2 ros2 fgr config
 colcon build
 ```
+
+9. Setup google cloud with Google Cloud Setup instructions (see below)
 
 #### Google Cloud Setup
 
@@ -37,12 +45,41 @@ colcon build
 4. (To be Automated) Create a Google BigQuery table XXX.DATASET_NAME.metadata
 
 ## Usage 
-#### Dataset Generator
+#### Dataset Collector
 Run dataset generator (stores ROS2 message as RLDS format) with the following instructions
 ```
 source install/setup.bash
 ros2 launch fogros2_rt_x data_collector.launch.py
 ```
+
+### Adapting your own application
+Currently, there are two ways of adapting your own applications to FogROS2-RT-X. 
+
+#### (Option 1) Write your own ROS2 publisher
+It takes the [step](https://github.com/KeplerC/fogros2-rt-x/blob/main/fogros2_rt_x_msgs/msg/Step.msg) message type as the input; the step message is automatically generated for your dataset after you run `ros2 fgr config`. You can write your own publisher as following: 
+
+```python
+from fogros2_rt_x_msgs.msg import Step, Observation, Action
+
+# initialize the data 
+observation_msg = Observation()
+action_msg = Action()
+step_msg = Step()
+
+# set your data
+step_msg.observation = observation_msg
+step_msg.action = action_msg
+...
+
+# publish it 
+publisher.publish(step_msg)
+```
+The publisher can be created with [this example](https://docs.ros.org/en/foxy/Tutorials/Beginner-Client-Libraries/Writing-A-Simple-Py-Publisher-And-Subscriber.html#id7)
+
+
+#### (Option 2) Automatic Message Collection with FogROS2-RT-X (Beta, Unstable)
+FogROS2-RT-X opens up one-to-one mapping of Observation/Action/Step field to ROS2 topic. After you run `data_collector.launch.py`, you may use `ros2 topic list` to view all the exposed topics. You may edit [Configuration File](./fogros2-rt-x/fogros2_rt_x/dataset_conf.py) to specify the desired topic to receive the specific type, or use [topic remapping](https://design.ros2.org/articles/static_remapping.html). 
+
 
 #### Replaying with existing datasets in Open-X-Embodiment
 You can replay existing datasets in ROS2 with 
@@ -50,13 +87,7 @@ You can replay existing datasets in ROS2 with
 source install/setup.bash
 ros2 launch fogros2_rt_x replayer.launch.py
 ```
-TODO: currently it plays the bridge dataset. We have not tested other datasets. 
-
-#### Adapting your own data collection
-Currently, it takes the [step](https://github.com/KeplerC/fogros2-rt-x/blob/main/fogros2_rt_x_msgs/msg/Step.msg) message as the input. We are working on automating the generation of step message. With the next iteration, it will be 
-1. an Action message (type defined by the user instead of FogROS)
-2. multiple Observation topics 
-as input, and FogROS2 facilitates the orchestration of the topics.  
+You may edit [replayer.launch.py](./fogros2-rt-x/launch/replayer.launch.py) for different datasets. 
 
 ## ROS1 Support 
 
