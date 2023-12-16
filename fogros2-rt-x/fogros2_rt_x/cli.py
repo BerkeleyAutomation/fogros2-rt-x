@@ -67,12 +67,16 @@ class FogCommand(CommandExtension):
         return extension.main(args=args)
 
 
+action_and_observation_str = '''
+Action action 
+Observation observation'''
+
 class ConfigVerb(VerbExtension):
     def add_arguments(self, parser, cli_name):
         parser.add_argument(
             "--msg_path",
             nargs="*",
-            help="Set AWS region (overrides config/env settings)",
+            help="Path to ROS2 message repo, default is to use the colcon workspace path",
         )
 
     def generate_ros_config(self):
@@ -84,6 +88,22 @@ class ConfigVerb(VerbExtension):
             action_spec=self.action_spec,
             step_spec=self.step_spec,
         )
+
+        # observation spec 
+        print("=== observation spec ===")
+        print(self.feature_spec.feature_spec_list_to_ros2_msg_definition(self.observation_spec))
+        with open(self.msg_path + "/Observation.msg", "w") as f:
+            f.write(self.feature_spec.feature_spec_list_to_ros2_msg_definition(self.observation_spec))
+        print("=== action spec ===")
+        print(self.feature_spec.feature_spec_list_to_ros2_msg_definition(self.action_spec))
+        with open(self.msg_path + "/Action.msg", "w") as f:
+            f.write(self.feature_spec.feature_spec_list_to_ros2_msg_definition(self.action_spec))
+        print("=== step spec ===")
+        print(self.feature_spec.feature_spec_list_to_ros2_msg_definition(self.step_spec))
+        
+        with open(self.msg_path + "/Step.msg", "w") as f:
+            f.write(self.feature_spec.feature_spec_list_to_ros2_msg_definition(self.step_spec))
+            f.write(action_and_observation_str)
 
 
     def main(self, *, args):
@@ -104,6 +124,9 @@ class ConfigVerb(VerbExtension):
             if args.msg_path[0] != "/":
                 raise ValueError("msg_path must be an absolute path")
             self.msg_path = args.msg_path
+
+        # append msg to path for the actual messages 
+        self.msg_path = self.msg_path + "/msg/"
         
         print("Writing Configuration to ROS2 message directory path: " + self.msg_path)
 

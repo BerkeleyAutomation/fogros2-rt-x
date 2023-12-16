@@ -1,4 +1,3 @@
-
 std_msgs/Float64 reward
 std_msgs/Float64 discount
 std_msgs/Bool is_first

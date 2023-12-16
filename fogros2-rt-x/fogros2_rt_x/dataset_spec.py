@@ -259,7 +259,7 @@ def tf_feature_definition_to_ros_msg_str(name, feature, default_val = None):
     NotImplementedError: If the feature type is not implemented.
     """
 
-    return f"{tf_feature_definition_to_ros_msg_class_str(feature)} {name} {default_val if default_val else ''}"
+    return f"{tf_feature_definition_to_ros_msg_class_str(feature)} {name}{' ' + str(default_val) if default_val else ''}"
 
 
 class FeatureSpec:
@@ -309,13 +309,6 @@ class DatasetFeatureSpec:
         self.check_spec(observation_spec)
         self.check_spec(action_spec)
         self.check_spec(step_spec)
-
-        print("=== observation spec ===")
-        print(self.feature_spec_list_to_ros2_msg_definition(self.observation_spec))
-        print("=== action spec ===")
-        print(self.feature_spec_list_to_ros2_msg_definition(self.action_spec))
-        print("=== step spec ===")
-        print(self.feature_spec_list_to_ros2_msg_definition(self.step_spec))
 
     def check_spec(self, spec):
         """
