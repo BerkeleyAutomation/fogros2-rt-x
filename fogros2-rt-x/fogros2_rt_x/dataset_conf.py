@@ -86,14 +86,14 @@ BIG_QUERY_PROJECT = "fogros2-rt-x"
 
 # example #2: berkeley_fanuc_manipulation
 OBSERVATION_SPEC = [
-    FeatureSpec("wrist_image", Image(shape=(480, 640, 3), dtype=tf.uint8)),
-    FeatureSpec("image", Image(shape=(480, 640, 3), dtype=tf.uint8)),
+    FeatureSpec("wrist_image", Image(shape=(224, 224, 3), dtype=tf.uint8)),
+    FeatureSpec("image", Image(shape=(224, 224, 3), dtype=tf.uint8)),
     FeatureSpec("end_effector_state", Tensor(shape=(7,), dtype=tf.float32)),
     FeatureSpec("state", Tensor(shape=(13,), dtype=tf.float32)),
 ]
 
 ACTION_SPEC = [
-    FeatureSpec("action", Tensor(shape=(6,), dtype=tf.float32), is_triggering_topic=True),
+    FeatureSpec("action", Tensor(shape=(6,), dtype=tf.float32)),
 ]
 
 STEP_SPEC = [
