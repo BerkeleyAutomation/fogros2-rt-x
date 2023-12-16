@@ -31,11 +31,12 @@
 # PROVIDED HEREUNDER IS PROVIDED "AS IS". REGENTS HAS NO OBLIGATION TO PROVIDE
 # MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
-import boto3
-from botocore.exceptions import NoRegionError
 from ros2cli.verb import VerbExtension
 
 from ros2cli.command import CommandExtension, add_subparsers_on_demand
+import os 
+from .dataset_spec import DatasetFeatureSpec
+from .dataset_conf import *
 
 
 class FogCommand(CommandExtension):
@@ -69,101 +70,42 @@ class FogCommand(CommandExtension):
 class ConfigVerb(VerbExtension):
     def add_arguments(self, parser, cli_name):
         parser.add_argument(
-            "--region",
+            "--msg_path",
             nargs="*",
             help="Set AWS region (overrides config/env settings)",
         )
 
-    def query_region(self, region):
-        try:
-            client = boto3.client("ec2", region)
-        except NoRegionError:
-            raise RuntimeError(
-                "AWS is not configured! Please run `aws configure` first."
-            )
-
-        ec2_instances = client.describe_instances(
-            Filters=[
-                {
-                    "Name": "instance.group-name",
-                    "Values": ["FOGROS2_SECURITY_GROUP"],
-                },
-                {"Name": "tag-key", "Values": ["FogROS2-Name"]},
-            ]
+    def generate_ros_config(self):
+        self.observation_spec = OBSERVATION_SPEC
+        self.action_spec = ACTION_SPEC
+        self.step_spec = STEP_SPEC
+        self.feature_spec = DatasetFeatureSpec(
+            observation_spec=self.observation_spec,
+            action_spec=self.action_spec,
+            step_spec=self.step_spec,
         )
 
-        # For each instance, we also look up the block device mapping
-        # to get the disk size.
-        for res in ec2_instances["Reservations"]:
-            for inst in res["Instances"]:
-                volumes = client.describe_volumes(
-                    VolumeIds=[
-                        m["Ebs"]["VolumeId"]
-                        for m in inst["BlockDeviceMappings"]
-                    ]
-                )
-                # Update the ec2_instances structure to include the
-                # block device info.
-                for i in range(len(volumes["Volumes"])):
-                    # Attachments duplicates info we already have, so
-                    # delete it.  Not really necessary, but it cleans
-                    # things up when debugging.
-                    del volumes["Volumes"][i]["Attachments"]
-                    inst["BlockDeviceMappings"][i]["Ebs"][
-                        "VolumeInfo"
-                    ] = volumes["Volumes"][i]
-
-        return [region, ec2_instances]
-
-    def print_region_info(self, region, ec2_instances):
-        if len(ec2_instances["Reservations"]) == 0:
-            print("No FogROS instances found")
-        for res in ec2_instances["Reservations"]:
-            for inst in res["Instances"]:
-                tag_map = (
-                    {t["Key"]: t["Value"] for t in inst["Tags"]}
-                    if "Tags" in inst
-                    else {}
-                )
-                print(
-                    f"====== {tag_map.get('FogROS2-Name', '(unknown)')} ======"
-                )
-                print("cloud_service_provider: AWS")
-                print(f"ec2_region: {region}")
-                print(
-                    "ec2_instance_type: "
-                    f"{inst.get('InstanceType', '(unknown)')}"
-                )
-                print(
-                    f"ec2_instance_id: {inst.get('InstanceId', '(unknown)')}"
-                )
-                print(f"public_ip: {inst.get('PublicIpAddress', '(none)')}")
-                print(f"ssh_key: {inst.get('KeyName', '(unknown)')}")
-                for bdm in inst["BlockDeviceMappings"]:
-                    if "Ebs" in bdm and "VolumeInfo" in bdm["Ebs"]:
-                        print(f"disk_size: {bdm['Ebs']['VolumeInfo']['Size']}")
-                print(f"aws_ami_image: {inst.get('ImageId', '(unknown)')}")
-                print(
-                    f"state: {inst.get('State', {'Name':'(unknown)'})['Name']}"
-                )
 
     def main(self, *, args):
-        regions = args.region
-        if regions is None or len(regions) == 0:
-            regions = [None]  # use default (should we default to "all")
-        elif "*" in regions or "all" in regions:
-            client = boto3.client("ec2")
-            response = client.describe_regions()
-            regions = [r["RegionName"] for r in response["Regions"]]
-
-        if len(regions) == 1:
-            self.print_region_info(*self.query_region(regions[0]))
+        """Handle config verb."""
+        if args.msg_path is None:
+            # get colcon workspace path
+            ws_path = os.environ["COLCON_PREFIX_PATH"]
+            msg_repo_path = ws_path + "/../fogros2-rt-x/dtype_msgs"
+            msg_repo_path_src = ws_path + "/../src/fogros2-rt-x/dtype_msgs"
+            # get path to fogros2-rt-x message repo
+            if os.path.exists(msg_repo_path):
+                self.msg_path = msg_repo_path
+            elif os.path.exists(msg_repo_path_src):
+                self.msg_path = msg_repo_path_src
+            else:
+                raise ValueError("default msg_path not found, checked " + msg_repo_path + " and " + msg_repo_path_src + "")
         else:
-            from concurrent.futures import ThreadPoolExecutor, as_completed
+            if args.msg_path[0] != "/":
+                raise ValueError("msg_path must be an absolute path")
+            self.msg_path = args.msg_path
+        
+        print("Writing Configuration to ROS2 message directory path: " + self.msg_path)
 
-            with ThreadPoolExecutor(max_workers=len(regions)) as executor:
-                futures = [
-                    executor.submit(self.query_region, r) for r in regions
-                ]
-                for f in as_completed(futures):
-                    self.print_region_info(*f.result())
+        self.generate_ros_config()
+        return 0
