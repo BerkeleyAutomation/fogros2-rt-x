@@ -45,7 +45,7 @@ sudo apt-get update && sudo apt-get install google-cloud-cli
 ```
 2. Login to your Google Cloud account using the command line:
     ```
-    gcloud auth application-default login
+    gcloud auth login
     ```
 3. (To be Automated) Create a Google Storage bucket through the Google Cloud Console.
 4. (To be Automated) Create a Google BigQuery table XXX.DATASET_NAME.metadata
@@ -55,7 +55,7 @@ sudo apt-get update && sudo apt-get install google-cloud-cli
 Run dataset generator (stores ROS2 message as RLDS format) with the following instructions
 ```
 source install/setup.bash
-ros2 launch fogros2_rt_x data_collector.launch.py
+ros2 run fogros2_rt_x recorder
 ```
 
 ### Adapting your own application
@@ -67,6 +67,7 @@ It takes the [step](https://github.com/KeplerC/fogros2-rt-x/blob/main/fogros2_rt
 ```python
 from fogros2_rt_x_msgs.msg import Step, Observation, Action
 
+publisher = Node.create_publisher(Step, 'step_info', 10)
 # initialize the data 
 observation_msg = Observation()
 action_msg = Action()
