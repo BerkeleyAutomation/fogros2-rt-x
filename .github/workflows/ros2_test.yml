@@ -1,0 +1,27 @@
+name: Unit Tests
+
+on:
+  pull_request:
+    branches:
+        - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up ROS 2 workspace
+      uses: ros-tooling/setup-ros@v2
+      with:
+        ros-distro: humble
+        colcon-working-directory: ./ws
+
+    - name: Build and test
+      uses: ros-tooling/action-ros-ci@v2
+      with:
+        ros-distro: humble
+        colcon-source-space: src
+        colcon-args: --packages-select fogros2-rt-x
