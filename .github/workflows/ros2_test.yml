@@ -14,14 +14,12 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Set up ROS 2 workspace
-      uses: ros-tooling/setup-ros@v2
+      uses: ros-tooling/setup-ros@v0.7
       with:
-        ros-distro: humble
-        colcon-working-directory: ./ws
+        required-ros-distro: humble
 
     - name: Build and test
-      uses: ros-tooling/action-ros-ci@v2
+      uses: ros-tooling/action-ros-ci@v0.3
       with:
-        ros-distro: humble
-        colcon-source-space: src
-        colcon-args: --packages-select fogros2-rt-x
+        package-name: fogros2_rt_x
+        target-ros-distro: humble
