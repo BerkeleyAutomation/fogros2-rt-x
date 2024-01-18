@@ -1,9 +1,10 @@
 
 
 from .conf_base import *
+from .orchestrator_base import PerPeriodTopicOrchestrator
 
 # bridge dataset
-class BridgeDatasetConfig(DatasetConfig):
+class BridgeDatasetConfig(BaseDatasetConfig):
     def __init__(self):
         # the name of the dataset
         DATASET_NAME = "bridge"
@@ -44,3 +45,4 @@ class BridgeDatasetConfig(DatasetConfig):
         )
 
 CONFIG = BridgeDatasetConfig()
+ORCHESTRATOR = PerPeriodTopicOrchestrator(CONFIG)

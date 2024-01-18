@@ -38,7 +38,7 @@ from tensorflow_datasets.core.features import Tensor, Image, FeaturesDict, Scala
 from fogros2_rt_x.dataset_spec import DatasetFeatureSpec, FeatureSpec
 
 
-class DatasetConfig:
+class BaseDatasetConfig:
     """
     A class for storing the configuration of a dataset.
 

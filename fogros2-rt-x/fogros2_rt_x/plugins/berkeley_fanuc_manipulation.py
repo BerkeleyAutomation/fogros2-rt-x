@@ -4,7 +4,7 @@ from .conf_base import *
 from .orchestrator_base import *
 
 # bridge dataset
-class BridgeDatasetConfig(DatasetConfig):
+class BridgeDatasetConfig(BaseDatasetConfig):
     def __init__(self):
         # the name of the dataset
         DATASET_NAME = "berkeley_fanuc_manipulation"
