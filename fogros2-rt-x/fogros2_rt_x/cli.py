@@ -34,10 +34,11 @@
 from ros2cli.verb import VerbExtension
 
 from ros2cli.command import CommandExtension, add_subparsers_on_demand
-import os 
+import os
 from .dataset_spec import DatasetFeatureSpec
 from .plugins.conf_base import *
 from .dataset_utils import *
+
 
 class FogCommand(CommandExtension):
     """Base 'fog' command ROS 2 CLI extension."""
@@ -67,9 +68,10 @@ class FogCommand(CommandExtension):
         return extension.main(args=args)
 
 
-action_and_observation_str = '''
+action_and_observation_str = """
 Action action 
-Observation observation'''
+Observation observation"""
+
 
 class ConfigVerb(VerbExtension):
     def add_arguments(self, parser, cli_name):
@@ -85,28 +87,46 @@ class ConfigVerb(VerbExtension):
         )
 
     def generate_ros_config(self):
-
         self.feature_spec = self.config.get_dataset_feature_spec()
         self.observation_spec = self.feature_spec.observation_spec
         self.action_spec = self.feature_spec.action_spec
         self.step_spec = self.feature_spec.step_spec
 
-        # observation spec 
+        # observation spec
         print("=== observation spec ===")
-        print(self.feature_spec.feature_spec_list_to_ros2_msg_definition(self.observation_spec))
+        print(
+            self.feature_spec.feature_spec_list_to_ros2_msg_definition(
+                self.observation_spec
+            )
+        )
         with open(self.msg_path + "/Observation.msg", "w") as f:
-            f.write(self.feature_spec.feature_spec_list_to_ros2_msg_definition(self.observation_spec))
+            f.write(
+                self.feature_spec.feature_spec_list_to_ros2_msg_definition(
+                    self.observation_spec
+                )
+            )
         print("=== action spec ===")
-        print(self.feature_spec.feature_spec_list_to_ros2_msg_definition(self.action_spec))
+        print(
+            self.feature_spec.feature_spec_list_to_ros2_msg_definition(self.action_spec)
+        )
         with open(self.msg_path + "/Action.msg", "w") as f:
-            f.write(self.feature_spec.feature_spec_list_to_ros2_msg_definition(self.action_spec))
+            f.write(
+                self.feature_spec.feature_spec_list_to_ros2_msg_definition(
+                    self.action_spec
+                )
+            )
         print("=== step spec ===")
-        print(self.feature_spec.feature_spec_list_to_ros2_msg_definition(self.step_spec))
-        
-        with open(self.msg_path + "/Step.msg", "w") as f:
-            f.write(self.feature_spec.feature_spec_list_to_ros2_msg_definition(self.step_spec))
-            f.write(action_and_observation_str)
+        print(
+            self.feature_spec.feature_spec_list_to_ros2_msg_definition(self.step_spec)
+        )
 
+        with open(self.msg_path + "/Step.msg", "w") as f:
+            f.write(
+                self.feature_spec.feature_spec_list_to_ros2_msg_definition(
+                    self.step_spec
+                )
+            )
+            f.write(action_and_observation_str)
 
     def main(self, *, args):
         """Handle config verb."""
@@ -121,15 +141,21 @@ class ConfigVerb(VerbExtension):
             elif os.path.exists(msg_repo_path_src):
                 self.msg_path = msg_repo_path_src
             else:
-                raise ValueError("default msg_path not found, checked " + msg_repo_path + " and " + msg_repo_path_src + " please specify --msg_path")
+                raise ValueError(
+                    "default msg_path not found, checked "
+                    + msg_repo_path
+                    + " and "
+                    + msg_repo_path_src
+                    + " please specify --msg_path"
+                )
         else:
             if args.msg_path[0] != "/":
                 raise ValueError("msg_path must be an absolute path")
             self.msg_path = args.msg_path
 
-        # append msg to path for the actual messages 
+        # append msg to path for the actual messages
         self.msg_path = self.msg_path + "/msg/"
-        
+
         if args.dataset_name is None:
             raise ValueError("dataset_name must be specified")
         else:

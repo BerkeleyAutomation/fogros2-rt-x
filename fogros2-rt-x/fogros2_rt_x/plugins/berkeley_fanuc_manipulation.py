@@ -1,7 +1,6 @@
-
-
 from .conf_base import *
 from .orchestrator_base import *
+
 
 # bridge dataset
 class FanucDatasetConfig(BaseDatasetConfig):
@@ -44,8 +43,10 @@ class FanucDatasetConfig(BaseDatasetConfig):
             step_spec=STEP_SPEC,
         )
 
+
 def GET_CONFIG():
     return FanucDatasetConfig()
+
 
 def GET_ORCHESTRATOR():
     return PerPeriodTopicOrchestrator(GET_CONFIG())

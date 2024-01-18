@@ -1,5 +1,3 @@
-
-
 import rclpy
 from rclpy.node import Node
 from .dataset_utils import *
@@ -19,6 +17,7 @@ class PlaceholderNode(Node):
         self.declare_parameter("dataset_name", "berkeley_fanuc_manipulation")
         self.dataset_name = self.get_parameter("dataset_name").value
         self.config = get_dataset_plugin_config_from_str(self.dataset_name)
+
 
 def main(args=None):
     rclpy.init(args=args)

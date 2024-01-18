@@ -1,7 +1,6 @@
-
-
 from .conf_base import *
 from .orchestrator_base import PerPeriodTopicOrchestrator
+
 
 # bridge dataset
 class BridgeDatasetConfig(BaseDatasetConfig):
@@ -15,14 +14,20 @@ class BridgeDatasetConfig(BaseDatasetConfig):
         BIG_QUERY_PROJECT = "fogros2-rt-x"
         OBSERVATION_SPEC = [
             FeatureSpec("image", Image(shape=(480, 640, 3), dtype=tf.uint8)),
-            FeatureSpec("natural_language_embedding", Tensor(shape=(512,), dtype=tf.float32)),
+            FeatureSpec(
+                "natural_language_embedding", Tensor(shape=(512,), dtype=tf.float32)
+            ),
             FeatureSpec("natural_language_instruction", Text()),
             FeatureSpec("state", Tensor(shape=(7,), dtype=tf.float32)),
         ]
 
         ACTION_SPEC = [
             FeatureSpec("open_gripper", Scalar(dtype=tf.bool)),
-            FeatureSpec("rotation_delta", Tensor(shape=(3,), dtype=tf.float32), is_triggering_topic=True),
+            FeatureSpec(
+                "rotation_delta",
+                Tensor(shape=(3,), dtype=tf.float32),
+                is_triggering_topic=True,
+            ),
             FeatureSpec("terminate_episode", Scalar(dtype=tf.float64)),
             FeatureSpec("world_vector", Tensor(shape=(3,), dtype=tf.float32)),
         ]
@@ -44,8 +49,10 @@ class BridgeDatasetConfig(BaseDatasetConfig):
             step_spec=STEP_SPEC,
         )
 
+
 def GET_CONFIG():
     return BridgeDatasetConfig()
+
 
 def GET_ORCHESTRATOR():
     return PerPeriodTopicOrchestrator(GET_CONFIG())

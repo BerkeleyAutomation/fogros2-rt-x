@@ -107,15 +107,15 @@ class BaseDatasetConfig:
                 "is_terminal": self.step_tf_dict["is_terminal"],
             },
         )
-    
+
     def _spec_to_tf_type_dict(self, spec):
-            """
-            Converts the feature specification to a dictionary.
+        """
+        Converts the feature specification to a dictionary.
 
-            Args:
-                spec (list): The feature specification.
+        Args:
+            spec (list): The feature specification.
 
-            Returns:
-                dict: The feature specification in dictionary format.
-            """
-            return {f.tf_name: f.tf_type for f in spec}
+        Returns:
+            dict: The feature specification in dictionary format.
+        """
+        return {f.tf_name: f.tf_type for f in spec}

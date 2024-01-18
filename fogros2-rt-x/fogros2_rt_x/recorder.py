@@ -109,12 +109,16 @@ class DatasetRecorder(Node):
         )
         self.subscription  # prevent unused variable warning
 
-        self.new_episode_notification_service = self.create_service(Empty, 'new_episode_notification_service', self.new_episode_notification_service_callback)
+        self.new_episode_notification_service = self.create_service(
+            Empty,
+            "new_episode_notification_service",
+            self.new_episode_notification_service_callback,
+        )
 
-        self.record_as_new_step = True 
-        
+        self.record_as_new_step = True
+
     def new_episode_notification_service_callback(self, request, response):
-        self.get_logger().info('Received new_episode_notification_service request')
+        self.get_logger().info("Received new_episode_notification_service request")
         self.record_as_new_step = True
         return response
 
@@ -166,6 +170,7 @@ class DatasetRecorder(Node):
             self.record_as_new_step = False
         else:
             self.writer.record_step(data, is_new_episode=False)
+
 
 def main(args=None):
     rclpy.init(args=args)

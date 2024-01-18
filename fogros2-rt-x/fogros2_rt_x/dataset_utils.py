@@ -37,6 +37,7 @@ import tensorflow_datasets as tfds
 import numpy as np
 from PIL import Image
 import importlib
+
 EXISTING_DATASETS = [
     "fractal20220817_data",
     "kuka",
@@ -111,43 +112,61 @@ def load_rlds_dataset(dataset_name="kuka"):
 
 
 def get_dataset_info(datasets):
-  """
-  Get information about the datasets.
+    """
+    Get information about the datasets.
 
-  Args:
-    datasets (list): List of dataset names.
+    Args:
+      datasets (list): List of dataset names.
 
-  Returns:
-    list: List of tuples containing dataset name and dataset information.
-  """
-  ret = []
-  for name in datasets:
-    uri = dataset2path(name)
-    b = tfds.builder_from_directory(builder_dir=uri)
-    split = list(b.info.splits.keys())[0]
-    b.as_dataset(split=split)
-    ret.append((name, b.info))
-  return ret
+    Returns:
+      list: List of tuples containing dataset name and dataset information.
+    """
+    ret = []
+    for name in datasets:
+        uri = dataset2path(name)
+        b = tfds.builder_from_directory(builder_dir=uri)
+        split = list(b.info.splits.keys())[0]
+        b.as_dataset(split=split)
+        ret.append((name, b.info))
+    return ret
+
 
 def get_dataset_plugin_config_from_str(dataset_str):
-  # check if dataset exists from importlib
-  try:
-    module = importlib.import_module("fogros2_rt_x.plugins." + dataset_str)
-  except ModuleNotFoundError:
-    raise ValueError("Dataset configuration {} not found. Please check if the dataset name is correct.".format(dataset_str))
-  
-  try:
-     return getattr(module, "GET_CONFIG")()
-  except AttributeError:
-    raise ValueError("Dataset configuration {} does not have GET_CONFIG function. Please check if it's implemented.".format(dataset_str))
+    # check if dataset exists from importlib
+    try:
+        module = importlib.import_module("fogros2_rt_x.plugins." + dataset_str)
+    except ModuleNotFoundError:
+        raise ValueError(
+            "Dataset configuration {} not found. Please check if the dataset name is correct.".format(
+                dataset_str
+            )
+        )
+
+    try:
+        return getattr(module, "GET_CONFIG")()
+    except AttributeError:
+        raise ValueError(
+            "Dataset configuration {} does not have GET_CONFIG function. Please check if it's implemented.".format(
+                dataset_str
+            )
+        )
+
 
 def get_orchestrator_from_str(dataset_str):
-  try:
-    module = importlib.import_module("fogros2_rt_x.plugins." + dataset_str)
-  except ModuleNotFoundError:
-    raise ValueError("Dataset configuration {} not found. Please check if the dataset name is correct.".format(dataset_str))
-  
-  try:
-      return getattr(module, "GET_ORCHESTRATOR")()
-  except AttributeError:
-    raise ValueError("Dataset configuration {} does not have GET_ORCHESTRATOR function. Please check if it's implemented.".format(dataset_str))
+    try:
+        module = importlib.import_module("fogros2_rt_x.plugins." + dataset_str)
+    except ModuleNotFoundError:
+        raise ValueError(
+            "Dataset configuration {} not found. Please check if the dataset name is correct.".format(
+                dataset_str
+            )
+        )
+
+    try:
+        return getattr(module, "GET_ORCHESTRATOR")()
+    except AttributeError:
+        raise ValueError(
+            "Dataset configuration {} does not have GET_ORCHESTRATOR function. Please check if it's implemented.".format(
+                dataset_str
+            )
+        )

@@ -249,7 +249,7 @@ def tf_feature_definition_to_ros_msg_class(feature):
     return get_ROS_class(tf_feature_definition_to_ros_msg_class_str(feature))
 
 
-def tf_feature_definition_to_ros_msg_str(name, feature, default_val = None):
+def tf_feature_definition_to_ros_msg_str(name, feature, default_val=None):
     """
     This function converts TensorFlow dataset features to ROS (Robot Operating System) message definitions.
 
@@ -269,7 +269,12 @@ def tf_feature_definition_to_ros_msg_str(name, feature, default_val = None):
 
 class FeatureSpec:
     def __init__(
-        self, tf_name, tf_type, ros_topic_name=None, default_value = None, is_triggering_topic=False
+        self,
+        tf_name,
+        tf_type,
+        ros_topic_name=None,
+        default_value=None,
+        is_triggering_topic=False,
     ) -> None:
         self.tf_name = tf_name
         self.tf_type = tf_type
@@ -404,8 +409,9 @@ class DatasetFeatureSpec:
         ros2_msg.action = Action()
         for feature in self.step_spec:
             if feature.tf_name == "discount":
-                # TODO: missing field 
+                # TODO: missing field
                 from std_msgs.msg import Float64
+
                 num = Float64()
                 num.data = 1.0
                 setattr(ros2_msg, feature.tf_name, num)
@@ -421,9 +427,9 @@ class DatasetFeatureSpec:
                 observation[feature.tf_name], feature.tf_type, ros2_msg_type
             )
             setattr(ros2_msg.observation, feature.tf_name, converted_value_to_ros2)
-        
+
         if type(action) is not dict:
-            feature = self.action_spec[0] # only one element in feature spec
+            feature = self.action_spec[0]  # only one element in feature spec
             ros2_msg_type = type(getattr(ros2_msg.action, feature.tf_name))
             converted_value_to_ros2 = tf_tensor_data_to_ros2_attribute_data(
                 action, feature.tf_type, ros2_msg_type
@@ -451,7 +457,9 @@ class DatasetFeatureSpec:
         """
         return "\n".join(
             [
-                tf_feature_definition_to_ros_msg_str(name, feature, default_val=feature.default_value)
+                tf_feature_definition_to_ros_msg_str(
+                    name, feature, default_val=feature.default_value
+                )
                 for name, feature in spec.items()
             ]
         )
@@ -468,10 +476,13 @@ class DatasetFeatureSpec:
         """
         return "\n".join(
             [
-                tf_feature_definition_to_ros_msg_str(spec.tf_name, spec.tf_type, default_val=spec.default_value)
+                tf_feature_definition_to_ros_msg_str(
+                    spec.tf_name, spec.tf_type, default_val=spec.default_value
+                )
                 for spec in feature_spec_list
             ]
         )
+
 
 # def cast_tensor_to_class_type(tensor, class_type):
 #     return class_type(tensor.numpy())

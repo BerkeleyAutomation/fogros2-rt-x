@@ -63,7 +63,7 @@ class DatasetReplayer(Node):
         self.declare_parameter("dataset_name", "berkeley_fanuc_manipulation")
         dataset_name = self.get_parameter("dataset_name").value
         self.config = get_dataset_plugin_config_from_str(dataset_name)
-        self.feature_spec = self.config.get_dataset_feature_spec()  
+        self.feature_spec = self.config.get_dataset_feature_spec()
 
         self.declare_parameter("per_episode_interval", 5)  # second
         self.per_episode_interval = self.get_parameter("per_episode_interval").value
@@ -143,7 +143,9 @@ class DatasetReplayer(Node):
                     msg = action.convert_tf_tensor_data_to_ros2_msg(step["action"])
                 else:
                     if action.tf_name not in step["action"]:
-                        self.logger.warn(f"Action {action.tf_name} not found in step data")
+                        self.logger.warn(
+                            f"Action {action.tf_name} not found in step data"
+                        )
                         continue
                     msg = action.convert_tf_tensor_data_to_ros2_msg(
                         step["action"][action.tf_name]

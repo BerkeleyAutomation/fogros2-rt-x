@@ -63,7 +63,9 @@ class BaseTopicOrchestrator(Node):
         self.publisher = self.create_publisher(Step, "step_info", 10)
 
         # used to notify for new episode
-        self.new_episode_notification_client = self.create_client(Empty, 'new_episode_notification_service')
+        self.new_episode_notification_client = self.create_client(
+            Empty, "new_episode_notification_service"
+        )
         self.new_episode_notification_req = Empty.Request()
 
     def _init_observation_topics(self):
@@ -73,11 +75,10 @@ class BaseTopicOrchestrator(Node):
                 setattr(self.observation_msg, topic_name, msg)
 
             return functools.partial(observation_callback, self)
+
         # create subscriptions for all observation topics
         for observation in self.feature_spec.observation_spec:
-            callback = create_dynamic_observation_callback(
-                observation.ros_topic_name
-            )
+            callback = create_dynamic_observation_callback(observation.ros_topic_name)
             self.create_subscription(
                 observation.ros_type,
                 observation.ros_topic_name,
@@ -86,11 +87,13 @@ class BaseTopicOrchestrator(Node):
             )
 
     def _init_action_topics(self):
-        def create_dynamic_action_callback( topic_name):
+        def create_dynamic_action_callback(topic_name):
             def action_callback(self, msg):
                 self.logger.info(f"Received action message on {topic_name}")
                 setattr(self.action_msg, topic_name, msg)
+
             return functools.partial(action_callback, self)
+
         # create publishers for all action topics
         for action in self.feature_spec.action_spec:
             callback = create_dynamic_action_callback(action.ros_topic_name)
@@ -99,17 +102,16 @@ class BaseTopicOrchestrator(Node):
             )
 
     def _init_step_information_topics(self):
-        def create_dynamic_step_callback( topic_name):
+        def create_dynamic_step_callback(topic_name):
             def step_callback(self, msg):
                 self.logger.info(f"Received step message on {topic_name}")
                 setattr(self.step_msg, topic_name, msg)
+
             return functools.partial(step_callback, self)
 
         # create subscriptions for all observation topics
         for step_info in self.feature_spec.step_spec:
-            callback = create_dynamic_step_callback(
-                step_info.ros_topic_name
-            )
+            callback = create_dynamic_step_callback(step_info.ros_topic_name)
             self.create_subscription(
                 step_info.ros_type,
                 step_info.ros_topic_name,
@@ -118,9 +120,13 @@ class BaseTopicOrchestrator(Node):
             )
 
     def _new_episode(self):
-        while not self.new_episode_notification_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Service not available, waiting again...')
-        self.future = self.new_episode_notification_client.call_async(self.new_episode_notification_req)
+        while not self.new_episode_notification_client.wait_for_service(
+            timeout_sec=1.0
+        ):
+            self.get_logger().info("Service not available, waiting again...")
+        self.future = self.new_episode_notification_client.call_async(
+            self.new_episode_notification_req
+        )
 
 
 class PerPeriodTopicOrchestrator(BaseTopicOrchestrator):
@@ -129,7 +135,7 @@ class PerPeriodTopicOrchestrator(BaseTopicOrchestrator):
 
         self.declare_parameter("per_step_interval", 0.2)  # second
         self.per_step_interval = self.get_parameter("per_step_interval").value
-        
+
         self.declare_parameter("per_episode_interval", 1)  # second
         self.per_episode_interval = self.get_parameter("per_episode_interval").value
 
