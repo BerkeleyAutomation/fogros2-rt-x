@@ -60,9 +60,9 @@ class DatasetReplayer(Node):
     def __init__(self):
         super().__init__("fogros2_rt_x_replayer")
 
-        self.declare_parameter("dataset_name", "bridge")
+        self.declare_parameter("dataset_name", "berkeley_fanuc_manipulation")
         dataset_name = self.get_parameter("dataset_name").value
-        self.config = get_dataset_config_from_str(dataset_name)
+        self.config = get_dataset_plugin_config_from_str(dataset_name)
 
         self.declare_parameter("per_episode_interval", 5)  # second
         self.per_episode_interval = self.get_parameter("per_episode_interval").value

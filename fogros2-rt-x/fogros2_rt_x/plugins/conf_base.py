@@ -95,26 +95,3 @@ class DatasetConfig:
                 "0.0.1": "Initial release.",
             },
         )
-
-
-# example #2: berkeley_fanuc_manipulation
-# OBSERVATION_SPEC = [
-#     FeatureSpec("wrist_image", Image(shape=(224, 224, 3), dtype=tf.uint8)),
-#     FeatureSpec("image", Image(shape=(224, 224, 3), dtype=tf.uint8)),
-#     FeatureSpec("end_effector_state", Tensor(shape=(7,), dtype=tf.float32)),
-#     FeatureSpec("state", Tensor(shape=(13,), dtype=tf.float32)),
-# ]
-
-# ACTION_SPEC = [
-#     FeatureSpec("action", Tensor(shape=(6,), dtype=tf.float32)),
-# ]
-
-# STEP_SPEC = [
-#     FeatureSpec("reward", Scalar(dtype=tf.float64)),
-#     FeatureSpec("discount", Scalar(dtype=tf.float64), default_value=0.0),
-#     FeatureSpec("is_first", Scalar(dtype=tf.bool)),
-#     FeatureSpec("is_last", Scalar(dtype=tf.bool)),
-#     FeatureSpec("is_terminal", Scalar(dtype=tf.bool)),
-#     FeatureSpec("language_embedding", Tensor(shape=(512,), dtype=tf.float32)),
-#     FeatureSpec("language_instruction", Text()),
-# ]

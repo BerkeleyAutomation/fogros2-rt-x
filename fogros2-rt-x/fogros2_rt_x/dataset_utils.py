@@ -129,7 +129,7 @@ def get_dataset_info(datasets):
     ret.append((name, b.info))
   return ret
 
-def get_dataset_config_from_str(dataset_str):
+def get_dataset_plugin_config_from_str(dataset_str):
   import importlib
   module = importlib.import_module("fogros2_rt_x.plugins." + dataset_str)
   return getattr(module, "CONFIG")
