@@ -31,45 +31,24 @@
 # PROVIDED HEREUNDER IS PROVIDED "AS IS". REGENTS HAS NO OBLIGATION TO PROVIDE
 # MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
-import socket
-
 import rclpy
 from rclpy.node import Node
-from .dataset_utils import *
+
 from fogros2_rt_x_msgs.msg import Step, Observation, Action
 import envlogger
 from envlogger import step_data
 import tensorflow_datasets as tfds
 from envlogger.backends import tfds_backend_writer
-from .dataset_spec import DatasetFeatureSpec
-from .dataset_conf import *
 import functools
-import time 
-import threading
 
-class StreamOrchestrator(Node):
-    def __init__(self):
+class BaseTopicOrchestrator(Node):
+    def __init__(self, config):
         super().__init__("fogros2_rt_x_orchestrator")
         self.logger = self.get_logger()
 
-        self.declare_parameter("alignment_wait_time", 0.2)  # second
-        self.alignment_wait_time = self.get_parameter("alignment_wait_time").value
+        self.config = config
+        self.feature_spec = self.config.get_dataset_feature_spec()
 
-        self.observation_spec = OBSERVATION_SPEC
-        self.action_spec = ACTION_SPEC
-        self.step_spec = STEP_SPEC
-
-        self.feature_spec = DatasetFeatureSpec(
-            observation_spec=self.observation_spec,
-            action_spec=self.action_spec,
-            step_spec=self.step_spec,
-        )
-
-        # check if the triggering topic is in the action spec
-        # this helps to determine the topic that triggers a new step message
-        self.feature_spec.check_triggering_topic()
-
-        self.triggering_topic = None
         self._init_observation_topics()
         self._init_action_topics()
         self._init_step_information_topics()
@@ -81,9 +60,15 @@ class StreamOrchestrator(Node):
         self.publisher = self.create_publisher(Step, "step_info", 10)
 
     def _init_observation_topics(self):
+        def create_dynamic_observation_callback(topic_name):
+            def observation_callback(self, msg):
+                self.logger.info(f"Received observation message on {topic_name}")
+                setattr(self.observation_msg, topic_name, msg)
+
+            return functools.partial(observation_callback, self)
         # create subscriptions for all observation topics
-        for observation in self.observation_spec:
-            callback = self.create_dynamic_observation_callback(
+        for observation in self.feature_spec.observation_spec:
+            callback = create_dynamic_observation_callback(
                 observation.ros_topic_name
             )
             self.create_subscription(
@@ -93,10 +78,29 @@ class StreamOrchestrator(Node):
                 10,
             )
 
+    def _init_action_topics(self):
+        def create_dynamic_action_callback( topic_name):
+            def action_callback(self, msg):
+                self.logger.info(f"Received action message on {topic_name}")
+                setattr(self.action_msg, topic_name, msg)
+            return functools.partial(action_callback, self)
+        # create publishers for all action topics
+        for action in self.feature_spec.action_spec:
+            callback = create_dynamic_action_callback(action.ros_topic_name)
+            self.create_subscription(
+                action.ros_type, action.ros_topic_name, callback, 10
+            )
+
     def _init_step_information_topics(self):
+        def create_dynamic_step_callback( topic_name):
+            def step_callback(self, msg):
+                self.logger.info(f"Received step message on {topic_name}")
+                setattr(self.step_msg, topic_name, msg)
+            return functools.partial(step_callback, self)
+
         # create subscriptions for all observation topics
-        for step_info in self.step_spec:
-            callback = self.create_dynamic_step_callback(
+        for step_info in self.feature_spec.step_spec:
+            callback = create_dynamic_step_callback(
                 step_info.ros_topic_name
             )
             self.create_subscription(
@@ -106,68 +110,18 @@ class StreamOrchestrator(Node):
                 10,
             )
 
-    def _init_action_topics(self):
-        # create publishers for all action topics
-        for action in self.action_spec:
-            callback = self.create_dynamic_action_callback(action.ros_topic_name)
-            self.create_subscription(
-                action.ros_type, action.ros_topic_name, callback, 10
-            )
-            if action.is_triggering_topic:
-                self.triggering_topic = action.ros_topic_name
-        if self.triggering_topic is None:
-            raise RuntimeError(
-                "No triggering topic found in action spec, need to choose one action topic as triggering topic"
-            )
 
-    def create_dynamic_action_callback(self, topic_name):
-        def action_callback(self, msg):
-            self.logger.info(f"Received action message on {topic_name}")
-            setattr(self.action_msg, topic_name, msg)
+class PerPeriodTopicOrchestrator(BaseTopicOrchestrator):
+    def __init__(self, config):
+        super().__init__(config)
 
-            if topic_name == self.triggering_topic:
-                self.step_msg.action = self.action_msg
-                self.step_msg.observation = self.observation_msg
-                self.send_step_msg_with_alignment_wait_time()
+        self.declare_parameter("per_period_interval", 0.2)  # second
+        self.per_period_interval = self.get_parameter("per_period_interval").value
+        
+        self.create_timer(self.per_period_interval, self.timer_callback)
 
-        return functools.partial(action_callback, self)
-
-    def create_dynamic_observation_callback(self, topic_name):
-        def observation_callback(self, msg):
-            self.logger.info(f"Received observation message on {topic_name}")
-            setattr(self.observation_msg, topic_name, msg)
-
-        return functools.partial(observation_callback, self)
-
-    def create_dynamic_step_callback(self, topic_name):
-        def step_callback(self, msg):
-            self.logger.info(f"Received step message on {topic_name}")
-            setattr(self.step_msg, topic_name, msg)
-
-        return functools.partial(step_callback, self)
-
-    def send_step_msg_with_alignment_wait_time(self):
-        def publishing_thread():
-            time.sleep(self.alignment_wait_time)
-            self.logger.info("Publishing step message")
-            self.publisher.publish(self.step_msg)
-        self.thread = threading.Thread(target=publishing_thread)
-        self.thread.start()
+    def timer_callback(self):
+        self.logger.info("Publishing step message")
+        self.publisher.publish(self.step_msg)
 
 
-def main(args=None):
-    rclpy.init(args=args)
-
-    stream_orchestrator = StreamOrchestrator()
-
-    rclpy.spin(stream_orchestrator)
-
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
-    stream_orchestrator.destroy_node()
-    rclpy.shutdown()
-
-
-if __name__ == "__main__":
-    main()

@@ -1,6 +1,7 @@
 
 
 from .conf_base import *
+from .orchestrator_base import *
 
 # bridge dataset
 class BridgeDatasetConfig(DatasetConfig):
@@ -44,3 +45,4 @@ class BridgeDatasetConfig(DatasetConfig):
         )
 
 CONFIG = BridgeDatasetConfig()
+ORCHESTRATOR = PerPeriodTopicOrchestrator(CONFIG)
