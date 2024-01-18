@@ -429,6 +429,7 @@ class DatasetFeatureSpec:
                 setattr(ros2_msg, feature.tf_name, num)
                 continue
             ros2_msg_type = type(getattr(ros2_msg, feature.tf_name))
+            print(step, feature.tf_name, feature.tf_type, ros2_msg_type)
             converted_value_to_ros2 = tf_tensor_data_to_ros2_attribute_data(
                 step[feature.tf_name], feature.tf_type, ros2_msg_type
             )

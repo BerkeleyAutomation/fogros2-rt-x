@@ -20,14 +20,14 @@
 import os
 from glob import glob
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 package_name = "fogros2_rt_x"
 
 setup(
     name=package_name,
     version="0.0.1",
-    packages=[package_name],
+    packages=find_packages(exclude=["test"]),
     data_files=[
         (
             "share/ament_index/resource_index/packages",
@@ -49,7 +49,6 @@ setup(
         "console_scripts": [
             "replayer = fogros2_rt_x.replayer:main",
             "recorder = fogros2_rt_x.recorder:main",
-            "orchestrator = fogros2_rt_x.orchestrator:main",
         ],
         "ros2cli.command": [
             "fgr = fogros2_rt_x.cli:FogCommand",

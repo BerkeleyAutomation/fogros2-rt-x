@@ -35,45 +35,79 @@
 import tensorflow_datasets as tfds
 import tensorflow as tf
 from tensorflow_datasets.core.features import Tensor, Image, FeaturesDict, Scalar, Text
-from .dataset_spec import DatasetFeatureSpec, FeatureSpec
-
-# the name of the dataset
-DATASET_NAME = "bridge"
-# TODO: other information such as citation
-
-# the path can be a local directory or a google cloud storage bucket
-SAVE_PATH = "/home/ubuntu/open-x-embodiment/playground_ds"
-# "/home/ubuntu/open-x-embodiment/playground_ds"
-# "gs://test-fogros-rtx-example"
-
-# this is used for bigquery project metadata storage
-# the project should be accessible through google cloud account
-BIG_QUERY_PROJECT = "fogros2-rt-x"
-
-# currently we support 
-# tfds.features.Image 
-# tfds.features.Tensor (1D only)
-# tfds.features.Text (for variable length of string)
-# tfds.features.Scalar (for any tf.dtype)
-# more types upon request 
+from fogros2_rt_x.dataset_spec import DatasetFeatureSpec, FeatureSpec
 
 
+class DatasetConfig:
+    """
+    A class for storing the configuration of a dataset.
 
-# example #1 bridge dataset
+    Args:
+        dataset_name (str): The name of the dataset.
+        save_path (str): The path to save the dataset.
+        big_query_project (str): The big query project to store the dataset metadata.
+        observation_spec (list): The list of observation feature specifications.
+        action_spec (list): The list of action feature specifications.
+        step_spec (list): The list of step feature specifications.
+    """
+
+    def __init__(
+        self,
+        dataset_name,
+        save_path,
+        big_query_project,
+        observation_spec,
+        action_spec,
+        step_spec,
+    ):
+        self.dataset_name = dataset_name
+        self.save_path = save_path
+        self.big_query_project = big_query_project
+        self.observation_spec = observation_spec
+        self.action_spec = action_spec
+        self.step_spec = step_spec
+
+    def get_dataset_feature_spec(self):
+        """
+        Get the dataset feature specification.
+
+        Returns:
+            DatasetFeatureSpec: The dataset feature specification.
+        """
+        return DatasetFeatureSpec(
+            observation_spec=self.observation_spec,
+            action_spec=self.action_spec,
+            step_spec=self.step_spec,
+        )
+
+    def get_dataset_builder(self):
+        """
+        Get the dataset builder.
+
+        Returns:
+            tfds.core.DatasetBuilder: The dataset builder.
+        """
+        return tfds.core.DatasetBuilder(
+            name=self.dataset_name,
+            data_dir=self.save_path,
+            version=tfds.core.Version("0.0.1"),
+            release_notes={
+                "0.0.1": "Initial release.",
+            },
+        )
+
+
+# example #2: berkeley_fanuc_manipulation
 # OBSERVATION_SPEC = [
-#     FeatureSpec("image", Image(shape=(480, 640, 3), dtype=tf.uint8)),
-#     FeatureSpec("natural_language_embedding", Tensor(shape=(512,), dtype=tf.float32)),
-#     FeatureSpec("natural_language_instruction", Text()),
-#     FeatureSpec("state", Tensor(shape=(7,), dtype=tf.float32)),
+#     FeatureSpec("wrist_image", Image(shape=(224, 224, 3), dtype=tf.uint8)),
+#     FeatureSpec("image", Image(shape=(224, 224, 3), dtype=tf.uint8)),
+#     FeatureSpec("end_effector_state", Tensor(shape=(7,), dtype=tf.float32)),
+#     FeatureSpec("state", Tensor(shape=(13,), dtype=tf.float32)),
 # ]
 
 # ACTION_SPEC = [
-#     FeatureSpec("open_gripper", Scalar(dtype=tf.bool)),
-#     FeatureSpec("rotation_delta", Tensor(shape=(3,), dtype=tf.float32), is_triggering_topic=True),
-#     FeatureSpec("terminate_episode", Scalar(dtype=tf.float64)),
-#     FeatureSpec("world_vector", Tensor(shape=(3,), dtype=tf.float32)),
+#     FeatureSpec("action", Tensor(shape=(6,), dtype=tf.float32)),
 # ]
-
 
 # STEP_SPEC = [
 #     FeatureSpec("reward", Scalar(dtype=tf.float64)),
@@ -81,27 +115,6 @@ BIG_QUERY_PROJECT = "fogros2-rt-x"
 #     FeatureSpec("is_first", Scalar(dtype=tf.bool)),
 #     FeatureSpec("is_last", Scalar(dtype=tf.bool)),
 #     FeatureSpec("is_terminal", Scalar(dtype=tf.bool)),
+#     FeatureSpec("language_embedding", Tensor(shape=(512,), dtype=tf.float32)),
+#     FeatureSpec("language_instruction", Text()),
 # ]
-
-
-# example #2: berkeley_fanuc_manipulation
-OBSERVATION_SPEC = [
-    FeatureSpec("wrist_image", Image(shape=(224, 224, 3), dtype=tf.uint8)),
-    FeatureSpec("image", Image(shape=(224, 224, 3), dtype=tf.uint8)),
-    FeatureSpec("end_effector_state", Tensor(shape=(7,), dtype=tf.float32)),
-    FeatureSpec("state", Tensor(shape=(13,), dtype=tf.float32)),
-]
-
-ACTION_SPEC = [
-    FeatureSpec("action", Tensor(shape=(6,), dtype=tf.float32)),
-]
-
-STEP_SPEC = [
-    FeatureSpec("reward", Scalar(dtype=tf.float64)),
-    FeatureSpec("discount", Scalar(dtype=tf.float64), default_value=0.0),
-    FeatureSpec("is_first", Scalar(dtype=tf.bool)),
-    FeatureSpec("is_last", Scalar(dtype=tf.bool)),
-    FeatureSpec("is_terminal", Scalar(dtype=tf.bool)),
-    FeatureSpec("language_embedding", Tensor(shape=(512,), dtype=tf.float32)),
-    FeatureSpec("language_instruction", Text()),
-]

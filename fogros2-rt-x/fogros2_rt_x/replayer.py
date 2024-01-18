@@ -38,7 +38,7 @@ from rclpy.node import Node
 from .dataset_utils import *
 from fogros2_rt_x_msgs.msg import Step, Observation, Action
 from .dataset_spec import DatasetFeatureSpec
-from .dataset_conf import *
+from .plugins.conf_base import *
 import time
 
 
@@ -60,8 +60,9 @@ class DatasetReplayer(Node):
     def __init__(self):
         super().__init__("fogros2_rt_x_replayer")
 
-        self.declare_parameter("dataset_name", DATASET_NAME)
+        self.declare_parameter("dataset_name", "bridge")
         dataset_name = self.get_parameter("dataset_name").value
+        self.config = get_dataset_config_from_str(dataset_name)
 
         self.declare_parameter("per_episode_interval", 5)  # second
         self.per_episode_interval = self.get_parameter("per_episode_interval").value
@@ -78,11 +79,7 @@ class DatasetReplayer(Node):
         self.logger = self.get_logger()
         self.logger.info("Loading Dataset " + str(get_dataset_info([dataset_name])))
 
-        self.feature_spec = DatasetFeatureSpec(
-            observation_spec=OBSERVATION_SPEC,
-            action_spec=ACTION_SPEC,
-            step_spec=STEP_SPEC,
-        )
+        self.feature_spec = self.config.get_dataset_feature_spec()
         self.episode = next(iter(self.dataset))
 
         if replay_type == "as_separate_topics":

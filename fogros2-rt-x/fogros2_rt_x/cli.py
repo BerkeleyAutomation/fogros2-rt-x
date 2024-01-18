@@ -36,7 +36,7 @@ from ros2cli.verb import VerbExtension
 from ros2cli.command import CommandExtension, add_subparsers_on_demand
 import os 
 from .dataset_spec import DatasetFeatureSpec
-from .dataset_conf import *
+from .plugins.conf_base import *
 
 
 class FogCommand(CommandExtension):
