@@ -45,4 +45,4 @@ class BridgeDatasetConfig(BaseDatasetConfig):
         )
 
 CONFIG = BridgeDatasetConfig()
-ORCHESTRATOR = PerPeriodTopicOrchestrator(CONFIG)
+# ORCHESTRATOR = PerPeriodTopicOrchestrator(CONFIG)

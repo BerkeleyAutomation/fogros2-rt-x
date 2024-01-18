@@ -37,7 +37,7 @@ from ros2cli.command import CommandExtension, add_subparsers_on_demand
 import os 
 from .dataset_spec import DatasetFeatureSpec
 from .plugins.conf_base import *
-
+from .dataset_utils import *
 
 class FogCommand(CommandExtension):
     """Base 'fog' command ROS 2 CLI extension."""
@@ -78,16 +78,18 @@ class ConfigVerb(VerbExtension):
             nargs="*",
             help="Path to ROS2 message repo, default is to use the colcon workspace path",
         )
+        parser.add_argument(
+            "--dataset_name",
+            nargs="*",
+            help="Name of the dataset, error when not specified, need to match the name in ./fogros2_rt_x/plugins",
+        )
 
     def generate_ros_config(self):
-        self.observation_spec = OBSERVATION_SPEC
-        self.action_spec = ACTION_SPEC
-        self.step_spec = STEP_SPEC
-        self.feature_spec = DatasetFeatureSpec(
-            observation_spec=self.observation_spec,
-            action_spec=self.action_spec,
-            step_spec=self.step_spec,
-        )
+
+        self.feature_spec = self.config.get_dataset_feature_spec()
+        self.observation_spec = self.feature_spec.observation_spec
+        self.action_spec = self.feature_spec.action_spec
+        self.step_spec = self.feature_spec.step_spec
 
         # observation spec 
         print("=== observation spec ===")
@@ -128,6 +130,12 @@ class ConfigVerb(VerbExtension):
         # append msg to path for the actual messages 
         self.msg_path = self.msg_path + "/msg/"
         
+        if args.dataset_name is None:
+            raise ValueError("dataset_name must be specified")
+        else:
+            self.dataset_name = args.dataset_name[0]
+            self.config = get_dataset_plugin_config_from_str(self.dataset_name)
+
         print("Writing Configuration to ROS2 message directory path: " + self.msg_path)
 
         self.generate_ros_config()
