@@ -67,6 +67,10 @@ class DatasetConfig:
         self.action_spec = action_spec
         self.step_spec = step_spec
 
+        self.observation_tf_dict = self._spec_to_tf_type_dict(observation_spec)
+        self.action_tf_dict = self._spec_to_tf_type_dict(action_spec)
+        self.step_tf_dict = self._spec_to_tf_type_dict(step_spec)
+
     def get_dataset_feature_spec(self):
         """
         Get the dataset feature specification.
@@ -80,18 +84,38 @@ class DatasetConfig:
             step_spec=self.step_spec,
         )
 
-    def get_dataset_builder(self):
+    def get_rlds_dataset_config(self):
         """
         Get the dataset builder.
 
         Returns:
             tfds.core.DatasetBuilder: The dataset builder.
         """
-        return tfds.core.DatasetBuilder(
+        return tfds.rlds.rlds_base.DatasetConfig(
             name=self.dataset_name,
-            data_dir=self.save_path,
             version=tfds.core.Version("0.0.1"),
             release_notes={
                 "0.0.1": "Initial release.",
             },
+            observation_info=self.observation_tf_dict,
+            action_info=self.action_tf_dict,
+            reward_info=self.step_tf_dict["reward"],
+            discount_info=self.step_tf_dict["discount"],
+            step_metadata_info={
+                "is_first": self.step_tf_dict["is_first"],
+                "is_last": self.step_tf_dict["is_last"],
+                "is_terminal": self.step_tf_dict["is_terminal"],
+            },
         )
+    
+    def _spec_to_tf_type_dict(self, spec):
+            """
+            Converts the feature specification to a dictionary.
+
+            Args:
+                spec (list): The feature specification.
+
+            Returns:
+                dict: The feature specification in dictionary format.
+            """
+            return {f.tf_name: f.tf_type for f in spec}

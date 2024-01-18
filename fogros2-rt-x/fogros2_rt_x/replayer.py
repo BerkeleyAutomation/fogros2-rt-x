@@ -63,10 +63,10 @@ class DatasetReplayer(Node):
         self.declare_parameter("dataset_name", "berkeley_fanuc_manipulation")
         dataset_name = self.get_parameter("dataset_name").value
         self.config = get_dataset_plugin_config_from_str(dataset_name)
+        self.feature_spec = self.config.get_dataset_feature_spec()  
 
         self.declare_parameter("per_episode_interval", 5)  # second
         self.per_episode_interval = self.get_parameter("per_episode_interval").value
-
         self.declare_parameter("per_step_interval", 0.2)  # second
         self.per_step_interval = self.get_parameter("per_step_interval").value
 
@@ -79,7 +79,6 @@ class DatasetReplayer(Node):
         self.logger = self.get_logger()
         self.logger.info("Loading Dataset " + str(get_dataset_info([dataset_name])))
 
-        self.feature_spec = self.config.get_dataset_feature_spec()
         self.episode = next(iter(self.dataset))
 
         if replay_type == "as_separate_topics":

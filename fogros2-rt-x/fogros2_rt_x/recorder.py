@@ -42,7 +42,7 @@ from envlogger import step_data
 import tensorflow_datasets as tfds
 from envlogger.backends import tfds_backend_writer
 from .dataset_spec import DatasetFeatureSpec
-from .dataset_conf import *
+from .plugins.conf_base import *
 from .backend_writer import CloudBackendWriter
 import dm_env
 from .database_connector import BaseDataBaseConnector, BigQueryConnector
@@ -76,36 +76,31 @@ class DatasetRecorder(Node):
     def __init__(self):
         super().__init__("fogros2_rt_x_recorder")
 
-        self.observation_spec = OBSERVATION_SPEC
-        self.action_spec = ACTION_SPEC
-        self.step_spec = STEP_SPEC
+        self.declare_parameter("dataset_name", "berkeley_fanuc_manipulation")
+        dataset_name = self.get_parameter("dataset_name").value
+        self.config = get_dataset_plugin_config_from_str(dataset_name)
 
-        self.feature_spec = DatasetFeatureSpec(
-            observation_spec=self.observation_spec,
-            action_spec=self.action_spec,
-            step_spec=self.step_spec,
-        )
+        # self.dataset_config = self.config.get_dataset_feature_spec()
+        # self. = self.config.get_dataset_feature_spec()
 
-        self.dataset_config = self.feature_spec.to_dataset_config(
-            dataset_name=DATASET_NAME
-        )
-
+        self.dataset_config = self.config.get_rlds_dataset_config()
+        self.feature_spec = self.config.get_dataset_feature_spec()
         self.last_action = None
         self.last_observation = None
         self.last_step = None
 
-        self.metadata_db = BigQueryConnector(
-            project_name=BIG_QUERY_PROJECT,
-            dataset_name=DATASET_NAME,
-            table_name="metadata",
-        )
+        # self.metadata_db = BigQueryConnector(
+        #     project_name=self.config.big_query_project,
+        #     dataset_name=self.config.dataset_name,
+        #     table_name="metadata",
+        # )
 
         self.writer = CloudBackendWriter(
-            data_directory=SAVE_PATH,
+            data_directory=self.config.save_path,
             max_episodes_per_file=1,
             ds_config=self.dataset_config,
             logger=self.get_logger(),
-            metadata_database=self.metadata_db,
+            metadata_database=None,
         )
 
         self.subscription = self.create_subscription(

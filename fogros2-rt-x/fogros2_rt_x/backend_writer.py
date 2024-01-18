@@ -163,7 +163,8 @@ class CloudBackendWriter(backend_writer.BackendWriter):
                 {self._split_name: [self._current_episode.get_rlds_episode()]}
             )
             self.episode_metadata = self._gather_episode_metadata()
-            self._metadata_database.insert([self.episode_metadata])
+            if self._metadata_database is not None:
+                self._metadata_database.insert([self.episode_metadata])
             self._current_episode = None
 
     def _record_step(self, data: step_data.StepData, is_new_episode: bool) -> None:

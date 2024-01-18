@@ -356,29 +356,6 @@ class DatasetFeatureSpec:
         """
         return {f.tf_name: f.tf_type for f in spec}
 
-    def to_dataset_config(self, dataset_name):
-        """
-        Converts the DatasetFeatureSpec to a tfds.rlds.rlds_base.DatasetConfig object.
-
-        Args:
-            dataset_name (str): The name of the dataset.
-
-        Returns:
-            tfds.rlds.rlds_base.DatasetConfig: The dataset configuration.
-        """
-        return tfds.rlds.rlds_base.DatasetConfig(
-            name=dataset_name,
-            observation_info=self.observation_tf_dict,
-            action_info=self.action_tf_dict,
-            reward_info=self.step_tf_dict["reward"],
-            discount_info=self.step_tf_dict["discount"],
-            step_metadata_info={
-                "is_first": self.step_tf_dict["is_first"],
-                "is_last": self.step_tf_dict["is_last"],
-                "is_terminal": self.step_tf_dict["is_terminal"],
-            },
-        )
-
     def convert_ros2_msg_to_step_tuple(self, ros2_msg):
         """
         Converts a ROS2 message to a step tuple.
