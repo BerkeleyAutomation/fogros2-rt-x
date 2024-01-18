@@ -45,7 +45,6 @@ def generate_launch_description():
         output="screen",
         parameters = [
             {"dataset_name": "berkeley_fanuc_manipulation"}, 
-            {"replay_type": "as_single_topic"}, 
         ]
     )
 

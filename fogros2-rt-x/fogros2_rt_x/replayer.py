@@ -71,8 +71,8 @@ class DatasetReplayer(Node):
         self.per_step_interval = self.get_parameter("per_step_interval").value
 
         self.declare_parameter(
-            "replay_type", "as_single_topic"
-        )  # as_single_topic | as_separate_topics
+            "replay_type", "both"
+        )  # as_single_topic | as_separate_topics | both
         replay_type = self.get_parameter("replay_type").value
 
         self.dataset = load_rlds_dataset(dataset_name)
@@ -85,6 +85,10 @@ class DatasetReplayer(Node):
             self.topic_name_to_publisher_dict = dict()
             self.init_publisher_separate_topics()
         elif replay_type == "as_single_topic":
+            self.init_publisher_single_topic()
+        elif replay_type == "both":
+            self.topic_name_to_publisher_dict = dict()
+            self.init_publisher_separate_topics()
             self.init_publisher_single_topic()
         else:
             raise ValueError(

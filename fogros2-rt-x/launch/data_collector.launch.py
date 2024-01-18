@@ -39,13 +39,15 @@ def generate_launch_description():
     """Talker example that launches everything locally."""
     ld = LaunchDescription()
 
+
+    dataset_name = "berkeley_fanuc_manipulation"
     # orchestrator node 
     orchestrator_node = Node(
         package="fogros2_rt_x",
         executable="orchestrator",
         output="screen",
         parameters = [
-            
+            {"dataset_name": dataset_name}, 
         ]
     )
     ld.add_action(orchestrator_node)
@@ -55,6 +57,9 @@ def generate_launch_description():
         package="fogros2_rt_x",
         executable="recorder",
         output="screen",
+        parameters = [
+            {"dataset_name": dataset_name}, 
+        ]
     )
     ld.add_action(recorder_node)
     return ld
