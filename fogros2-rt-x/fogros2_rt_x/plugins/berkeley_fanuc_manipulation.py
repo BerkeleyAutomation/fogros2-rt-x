@@ -4,7 +4,7 @@ from .conf_base import *
 from .orchestrator_base import *
 
 # bridge dataset
-class BridgeDatasetConfig(BaseDatasetConfig):
+class FanucDatasetConfig(BaseDatasetConfig):
     def __init__(self):
         # the name of the dataset
         DATASET_NAME = "berkeley_fanuc_manipulation"
@@ -44,5 +44,8 @@ class BridgeDatasetConfig(BaseDatasetConfig):
             step_spec=STEP_SPEC,
         )
 
-CONFIG = BridgeDatasetConfig()
-# ORCHESTRATOR = PerPeriodTopicOrchestrator(CONFIG)
+def GET_CONFIG():
+    return FanucDatasetConfig()
+
+def GET_ORCHESTRATOR():
+    return PerPeriodTopicOrchestrator(GET_CONFIG())

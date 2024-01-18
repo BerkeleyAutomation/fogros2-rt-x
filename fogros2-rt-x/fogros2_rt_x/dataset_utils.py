@@ -36,7 +36,7 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 import numpy as np
 from PIL import Image
-
+import importlib
 EXISTING_DATASETS = [
     "fractal20220817_data",
     "kuka",
@@ -130,11 +130,24 @@ def get_dataset_info(datasets):
   return ret
 
 def get_dataset_plugin_config_from_str(dataset_str):
-  import importlib
-  module = importlib.import_module("fogros2_rt_x.plugins." + dataset_str)
-  return getattr(module, "CONFIG")
+  # check if dataset exists from importlib
+  try:
+    module = importlib.import_module("fogros2_rt_x.plugins." + dataset_str)
+  except ModuleNotFoundError:
+    raise ValueError("Dataset configuration {} not found. Please check if the dataset name is correct.".format(dataset_str))
+  
+  try:
+     return getattr(module, "GET_CONFIG")()
+  except AttributeError:
+    raise ValueError("Dataset configuration {} does not have GET_CONFIG function. Please check if it's implemented.".format(dataset_str))
 
 def get_orchestrator_from_str(dataset_str):
-  import importlib
-  module = importlib.import_module("fogros2_rt_x.plugins." + dataset_str)
-  return getattr(module, "ORCHESTRATOR")
+  try:
+    module = importlib.import_module("fogros2_rt_x.plugins." + dataset_str)
+  except ModuleNotFoundError:
+    raise ValueError("Dataset configuration {} not found. Please check if the dataset name is correct.".format(dataset_str))
+  
+  try:
+      return getattr(module, "GET_ORCHESTRATOR")()
+  except AttributeError:
+    raise ValueError("Dataset configuration {} does not have GET_ORCHESTRATOR function. Please check if it's implemented.".format(dataset_str))

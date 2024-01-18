@@ -44,5 +44,8 @@ class BridgeDatasetConfig(BaseDatasetConfig):
             step_spec=STEP_SPEC,
         )
 
-CONFIG = BridgeDatasetConfig()
-# ORCHESTRATOR = PerPeriodTopicOrchestrator(CONFIG)
+def GET_CONFIG():
+    return BridgeDatasetConfig()
+
+def GET_ORCHESTRATOR():
+    return PerPeriodTopicOrchestrator(GET_CONFIG())
