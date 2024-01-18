@@ -45,9 +45,9 @@ from .dataset_spec import DatasetFeatureSpec
 from .plugins.conf_base import *
 from .backend_writer import CloudBackendWriter
 import dm_env
-from .database_connector import SqliteConnector
+from .database_connector import BaseDataBaseConnector, BigQueryConnector
 from std_srvs.srv import Empty
-import random 
+
 
 class DatasetRecorder(Node):
     """
@@ -78,8 +78,8 @@ class DatasetRecorder(Node):
         super().__init__("fogros2_rt_x_recorder")
 
         self.declare_parameter("dataset_name", "berkeley_fanuc_manipulation")
-        self.dataset_name = self.get_parameter("dataset_name").value
-        self.config = get_dataset_plugin_config_from_str(self.dataset_name)
+        dataset_name = self.get_parameter("dataset_name").value
+        self.config = get_dataset_plugin_config_from_str(dataset_name)
 
         # self.dataset_config = self.config.get_dataset_feature_spec()
         # self. = self.config.get_dataset_feature_spec()
@@ -96,18 +96,13 @@ class DatasetRecorder(Node):
         #     table_name="metadata",
         # )
 
-        #TODO: more params
-        self.storage_backend = SqliteConnector("example.db")
-        columns = {"episode_id": "INTEGER", "step": "TEXT", "observation": "TEXT", "action": "TEXT"}
-        self.storage_backend.create_table(table_name = self.dataset_name, columns = columns)
-        
-        # self.writer = CloudBackendWriter(
-        #     data_directory=self.config.save_path,
-        #     max_episodes_per_file=1,
-        #     ds_config=self.dataset_config,
-        #     logger=self.get_logger(),
-        #     metadata_database=None,
-        # )
+        self.writer = CloudBackendWriter(
+            data_directory=self.config.save_path,
+            max_episodes_per_file=1,
+            ds_config=self.dataset_config,
+            logger=self.get_logger(),
+            metadata_database=None,
+        )
 
         self.subscription = self.create_subscription(
             Step, "step_info", self.listener_callback, 10
@@ -120,28 +115,12 @@ class DatasetRecorder(Node):
             self.new_episode_notification_service_callback,
         )
 
-        # a random integer to identify the episode
-        self.episode_id = random.randint(0, 1000000)
-        self.step_counter = 0
         self.record_as_new_step = True
 
     def new_episode_notification_service_callback(self, request, response):
         self.get_logger().info("Received new_episode_notification_service request")
-        self.episode_id = random.randint(0, 1000000)
         self.record_as_new_step = True
         return response
-
-    def record_step(self):
-        self.storage_backend.insert_data(
-            table_name=self.dataset_name,
-            data={
-                "episode_id": self.episode_id,
-                "step": str(self.last_step),
-                "observation": str(self.last_observation),
-                "action": str(self.last_action),
-            },
-        )
-
 
     def listener_callback(self, step_msg):
         """
@@ -164,30 +143,29 @@ class DatasetRecorder(Node):
             self.last_step,
         ) = self.feature_spec.convert_ros2_msg_to_step_tuple(step_msg)
 
-        self.record_step()
-        # if self.last_step["is_last"]:
-        #     step_type = dm_env.StepType.LAST
-        # elif self.last_step["is_first"]:
-        #     step_type = dm_env.StepType.FIRST
-        # else:
-        #     step_type = dm_env.StepType.MID
+        if self.last_step["is_last"]:
+            step_type = dm_env.StepType.LAST
+        elif self.last_step["is_first"]:
+            step_type = dm_env.StepType.FIRST
+        else:
+            step_type = dm_env.StepType.MID
 
-        # timestep = dm_env.TimeStep(
-        #     step_type=step_type,
-        #     reward=self.last_step["reward"],
-        #     discount=self.last_step["discount"],
-        #     observation=self.last_observation,
-        # )
+        timestep = dm_env.TimeStep(
+            step_type=step_type,
+            reward=self.last_step["reward"],
+            discount=self.last_step["discount"],
+            observation=self.last_observation,
+        )
 
-        # data = step_data.StepData(
-        #     timestep=timestep, action=self.last_action, custom_data=None
-        # )
+        data = step_data.StepData(
+            timestep=timestep, action=self.last_action, custom_data=None
+        )
 
-        # if self.record_as_new_step or self.last_step["is_first"]:
-        #     self.writer.record_step(data, is_new_episode=True)
-        #     self.record_as_new_step = False
-        # else:
-        #     self.writer.record_step(data, is_new_episode=False)
+        if self.record_as_new_step or self.last_step["is_first"]:
+            self.writer.record_step(data, is_new_episode=True)
+            self.record_as_new_step = False
+        else:
+            self.writer.record_step(data, is_new_episode=False)
 
 
 def main(args=None):
