@@ -83,8 +83,8 @@ def ros2_msg_data_to_tf_tensor_data(ros2_attribute, tf_feature):
     """
     if isinstance(tf_feature, tfds.features.Image):
         if ros2_attribute == Image():
-            print("empty image")
-            return np.zeros((480, 640, 3), dtype=np.uint8)
+            print("[error] empty image, fill in with zeros")
+            return np.zeros(tf_feature.shape, dtype=np.uint8)
         bridge = CvBridge()
         image_message = bridge.imgmsg_to_cv2(ros2_attribute)
         return image_message
@@ -94,6 +94,11 @@ def ros2_msg_data_to_tf_tensor_data(ros2_attribute, tf_feature):
         return ros2_attribute.data
     elif isinstance(tf_feature, tfds.features.Tensor):
         data = ros2_attribute.data
+        print("[error] empty array, fill in with zeros")
+        # check if empty
+        if len(data) == 0:
+            return np.zeros(tf_feature.shape, dtype=tf_feature.np_dtype)
+
         # Retrieve the shape information from the MultiArrayLayout
         original_shape = [dim.size for dim in ros2_attribute.layout.dim]
         # Convert the data into a TensorFlow tensor

@@ -46,6 +46,7 @@ from .plugins.conf_base import *
 from .backend_writer import CloudBackendWriter
 import dm_env
 from .database_connector import BaseDataBaseConnector, BigQueryConnector
+from std_srvs.srv import Empty
 
 
 class DatasetRecorder(Node):
@@ -108,6 +109,15 @@ class DatasetRecorder(Node):
         )
         self.subscription  # prevent unused variable warning
 
+        self.new_episode_notification_service = self.create_service(Empty, 'new_episode_notification_service', self.new_episode_notification_service_callback)
+
+        self.record_as_new_step = True 
+        
+    def new_episode_notification_service_callback(self, request, response):
+        self.get_logger().info('Received new_episode_notification_service request')
+        self.record_as_new_step = True
+        return response
+
     def listener_callback(self, step_msg):
         """
         Callback function for processing step messages.
@@ -147,11 +157,15 @@ class DatasetRecorder(Node):
             timestep=timestep, action=self.last_action, custom_data=None
         )
 
-        if self.last_step["is_first"]:
+        # if self.last_step["is_first"]:
+        #     self.writer.record_step(data, is_new_episode=True)
+        # else:
+        #     self.writer.record_step(data, is_new_episode=False)
+        if self.record_as_new_step or self.last_step["is_first"]:
             self.writer.record_step(data, is_new_episode=True)
+            self.record_as_new_step = False
         else:
             self.writer.record_step(data, is_new_episode=False)
-
 
 def main(args=None):
     rclpy.init(args=args)

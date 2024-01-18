@@ -41,6 +41,9 @@ import tensorflow_datasets as tfds
 from envlogger.backends import tfds_backend_writer
 import functools
 
+from std_srvs.srv import Empty
+
+
 class BaseTopicOrchestrator(Node):
     def __init__(self, config):
         super().__init__("fogros2_rt_x_orchestrator")
@@ -58,6 +61,10 @@ class BaseTopicOrchestrator(Node):
         self.step_msg = Step()
 
         self.publisher = self.create_publisher(Step, "step_info", 10)
+
+        # used to notify for new episode
+        self.new_episode_notification_client = self.create_client(Empty, 'new_episode_notification_service')
+        self.new_episode_notification_req = Empty.Request()
 
     def _init_observation_topics(self):
         def create_dynamic_observation_callback(topic_name):
@@ -110,18 +117,30 @@ class BaseTopicOrchestrator(Node):
                 10,
             )
 
+    def _new_episode(self):
+        while not self.new_episode_notification_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Service not available, waiting again...')
+        self.future = self.new_episode_notification_client.call_async(self.new_episode_notification_req)
+
 
 class PerPeriodTopicOrchestrator(BaseTopicOrchestrator):
     def __init__(self, config):
         super().__init__(config)
 
-        self.declare_parameter("per_period_interval", 0.2)  # second
-        self.per_period_interval = self.get_parameter("per_period_interval").value
+        self.declare_parameter("per_step_interval", 0.2)  # second
+        self.per_step_interval = self.get_parameter("per_step_interval").value
         
-        self.create_timer(self.per_period_interval, self.timer_callback)
+        self.declare_parameter("per_episode_interval", 1)  # second
+        self.per_episode_interval = self.get_parameter("per_episode_interval").value
 
-    def timer_callback(self):
+        self.create_timer(self.per_step_interval, self.per_step_timer_callback)
+        self.create_timer(self.per_episode_interval, self.per_episode_timer_callback)
+
+    def per_step_timer_callback(self):
         self.logger.info("Publishing step message")
         self.publisher.publish(self.step_msg)
 
-
+    def per_episode_timer_callback(self):
+        # since we use is_first to indicate the start of a new episode
+        self.logger.info("new episode")
+        self._new_episode()
