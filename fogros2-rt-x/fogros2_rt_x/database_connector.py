@@ -48,6 +48,12 @@ db.update_data("employees", updates, conditions)
 # Query data
 print(db.query_data("SELECT * FROM employees"))
 
+# Query data with conditions
+conditions = {"position": "Manager"}
+rows = db.query_data_with_condition("employees", columns=["name", "salary"], conditions=conditions)
+for row in rows:
+    print(row)
+    
 # Close the database
 db.close()
 
@@ -109,6 +115,24 @@ class SqliteConnector(BaseDataBaseConnector):
         """Add a new column to a table"""
         alter_query = f"ALTER TABLE {table_name} ADD COLUMN {column} {data_type}"
         self.execute_query(alter_query)
+
+    def construct_select_query_with_condition(self, table_name, columns, conditions, use_or=False):
+        """Construct a SELECT query with conditions"""
+        select_columns = ', '.join(columns) if columns else '*'
+        if conditions:
+            operator = " OR " if use_or else " AND "
+            where_clause = operator.join([f"{column} = ?" for column in conditions])
+            query = f"SELECT {select_columns} FROM {table_name} WHERE {where_clause}"
+        else:
+            query = f"SELECT {select_columns} FROM {table_name}"
+        return query
+
+    def query_data_with_condition(self, table_name, columns=None, conditions=None, use_or=False):
+        """Query data with specified conditions"""
+        conditions = conditions or {}
+        query = self.construct_select_query_with_condition(table_name, columns or ['*'], conditions.keys(), use_or)
+        return self.query_data(query, tuple(conditions.values()))
+
 
     def close(self):
         """Close the database connection"""

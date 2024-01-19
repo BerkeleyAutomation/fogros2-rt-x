@@ -56,6 +56,7 @@ setup(
         ],
         "fogros2_rt_x.verb": [
             "config = fogros2_rt_x.cli:ConfigVerb",
+            "export = fogros2_rt_x.cli:ExportVerb",
         ],
     },
 )

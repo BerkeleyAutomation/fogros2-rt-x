@@ -31,6 +31,7 @@
 # PROVIDED HEREUNDER IS PROVIDED "AS IS". REGENTS HAS NO OBLIGATION TO PROVIDE
 # MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
+from .exporter import DatasetExporter
 from ros2cli.verb import VerbExtension
 
 from ros2cli.command import CommandExtension, add_subparsers_on_demand
@@ -165,4 +166,26 @@ class ConfigVerb(VerbExtension):
         print("Writing Configuration to ROS2 message directory path: " + self.msg_path)
 
         self.generate_ros_config()
+        return 0
+
+class ExportVerb(VerbExtension):
+    def add_arguments(self, parser, cli_name):
+        parser.add_argument(
+            "--dataset_name",
+            nargs="*",
+            help="Name of the dataset, error when not specified, need to match the name in ./fogros2_rt_x/plugins",
+        )
+
+    def main(self, *, args):
+
+        if args.dataset_name is None:
+            raise ValueError("dataset_name must be specified")
+        else:
+            self.dataset_name = args.dataset_name[0]
+            self.config = get_dataset_plugin_config_from_str(self.dataset_name)
+
+        print("Exporting dataset: " + self.dataset_name)
+        self.exporter = DatasetExporter(self.config)
+        self.exporter.execute()
+        print("Exporting dataset complete")
         return 0

@@ -32,22 +32,24 @@
 # MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 import socket
+from .exporter import DatasetExporter
 
 import rclpy
 from rclpy.node import Node
 from .dataset_utils import *
 from fogros2_rt_x_msgs.msg import Step, Observation, Action
 import envlogger
-from envlogger import step_data
+
 import tensorflow_datasets as tfds
 from envlogger.backends import tfds_backend_writer
 from .dataset_spec import DatasetFeatureSpec
 from .plugins.conf_base import *
-from .backend_writer import CloudBackendWriter
-import dm_env
+
+
 from .database_connector import SqliteConnector
 from std_srvs.srv import Empty
-import random 
+import random
+import pickle 
 
 class DatasetRecorder(Node):
     """
@@ -80,34 +82,28 @@ class DatasetRecorder(Node):
         self.declare_parameter("dataset_name", "berkeley_fanuc_manipulation")
         self.dataset_name = self.get_parameter("dataset_name").value
         self.config = get_dataset_plugin_config_from_str(self.dataset_name)
-
-        # self.dataset_config = self.config.get_dataset_feature_spec()
-        # self. = self.config.get_dataset_feature_spec()
-
-        self.dataset_config = self.config.get_rlds_dataset_config()
+        
         self.feature_spec = self.config.get_dataset_feature_spec()
         self.last_action = None
         self.last_observation = None
         self.last_step = None
 
-        # self.metadata_db = BigQueryConnector(
-        #     project_name=self.config.big_query_project,
-        #     dataset_name=self.config.dataset_name,
-        #     table_name="metadata",
-        # )
-
-        #TODO: more params
-        self.storage_backend = SqliteConnector("example.db")
-        columns = {"episode_id": "INTEGER", "step": "TEXT", "observation": "TEXT", "action": "TEXT"}
-        self.storage_backend.create_table(table_name = self.dataset_name, columns = columns)
         
-        # self.writer = CloudBackendWriter(
-        #     data_directory=self.config.save_path,
-        #     max_episodes_per_file=1,
-        #     ds_config=self.dataset_config,
-        #     logger=self.get_logger(),
-        #     metadata_database=None,
-        # )
+        exporter = DatasetExporter(self.config)
+        exporter.execute()
+        self.get_logger().info("Dataset exported")
+
+        # TODO: more params
+        self.storage_backend = SqliteConnector("example.db")
+        columns = {
+            "episode_id": "INTEGER",
+            "step": "BLOB",
+            "observation": "BLOB",
+            "action": "BLOB",
+            "should_export": "INTEGER"
+        }
+        self.storage_backend.create_table(table_name=self.dataset_name, columns=columns)
+
 
         self.subscription = self.create_subscription(
             Step, "step_info", self.listener_callback, 10
@@ -136,12 +132,12 @@ class DatasetRecorder(Node):
             table_name=self.dataset_name,
             data={
                 "episode_id": self.episode_id,
-                "step": str(self.last_step),
-                "observation": str(self.last_observation),
-                "action": str(self.last_action),
+                "step": pickle.dumps(self.last_step),
+                "observation": pickle.dumps(self.last_observation),
+                "action": pickle.dumps(self.last_action),
+                "should_export": 1,
             },
         )
-
 
     def listener_callback(self, step_msg):
         """
@@ -165,29 +161,6 @@ class DatasetRecorder(Node):
         ) = self.feature_spec.convert_ros2_msg_to_step_tuple(step_msg)
 
         self.record_step()
-        # if self.last_step["is_last"]:
-        #     step_type = dm_env.StepType.LAST
-        # elif self.last_step["is_first"]:
-        #     step_type = dm_env.StepType.FIRST
-        # else:
-        #     step_type = dm_env.StepType.MID
-
-        # timestep = dm_env.TimeStep(
-        #     step_type=step_type,
-        #     reward=self.last_step["reward"],
-        #     discount=self.last_step["discount"],
-        #     observation=self.last_observation,
-        # )
-
-        # data = step_data.StepData(
-        #     timestep=timestep, action=self.last_action, custom_data=None
-        # )
-
-        # if self.record_as_new_step or self.last_step["is_first"]:
-        #     self.writer.record_step(data, is_new_episode=True)
-        #     self.record_as_new_step = False
-        # else:
-        #     self.writer.record_step(data, is_new_episode=False)
 
 
 def main(args=None):
