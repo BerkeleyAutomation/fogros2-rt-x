@@ -88,11 +88,6 @@ class DatasetRecorder(Node):
         self.last_observation = None
         self.last_step = None
 
-        
-        exporter = DatasetExporter(self.config)
-        exporter.execute()
-        self.get_logger().info("Dataset exported")
-
         # TODO: more params
         self.storage_backend = SqliteConnector("fogros_rt_x.db")
         columns = {

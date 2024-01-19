@@ -35,9 +35,6 @@ class BridgeDatasetConfig(BaseDatasetConfig):
         STEP_SPEC = [
             FeatureSpec("reward", Scalar(dtype=tf.float64)),
             FeatureSpec("discount", Scalar(dtype=tf.float64), default_value=0.0),
-            FeatureSpec("is_first", Scalar(dtype=tf.bool)),
-            FeatureSpec("is_last", Scalar(dtype=tf.bool)),
-            FeatureSpec("is_terminal", Scalar(dtype=tf.bool)),
         ]
 
         super().__init__(

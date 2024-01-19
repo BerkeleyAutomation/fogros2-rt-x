@@ -27,9 +27,6 @@ class FanucDatasetConfig(BaseDatasetConfig):
         STEP_SPEC = [
             FeatureSpec("reward", Scalar(dtype=tf.float64)),
             FeatureSpec("discount", Scalar(dtype=tf.float64), default_value=0.0),
-            FeatureSpec("is_first", Scalar(dtype=tf.bool)),
-            FeatureSpec("is_last", Scalar(dtype=tf.bool)),
-            FeatureSpec("is_terminal", Scalar(dtype=tf.bool)),
             FeatureSpec("language_embedding", Tensor(shape=(512,), dtype=tf.float32)),
             FeatureSpec("language_instruction", Text()),
         ]

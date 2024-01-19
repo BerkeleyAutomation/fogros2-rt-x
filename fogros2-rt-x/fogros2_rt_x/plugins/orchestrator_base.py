@@ -73,6 +73,7 @@ class BaseTopicOrchestrator(Node):
             def observation_callback(self, msg):
                 self.logger.info(f"Received observation message on {topic_name}")
                 setattr(self.observation_msg, topic_name, msg)
+                self.step_msg.observation = self.observation_msg
 
             return functools.partial(observation_callback, self)
 
@@ -91,6 +92,7 @@ class BaseTopicOrchestrator(Node):
             def action_callback(self, msg):
                 self.logger.info(f"Received action message on {topic_name}")
                 setattr(self.action_msg, topic_name, msg)
+                self.step_msg.action = self.action_msg
 
             return functools.partial(action_callback, self)
 
@@ -109,7 +111,7 @@ class BaseTopicOrchestrator(Node):
 
             return functools.partial(step_callback, self)
 
-        # create subscriptions for all observation topics
+        # create subscriptions for all step topics
         for step_info in self.feature_spec.step_spec:
             callback = create_dynamic_step_callback(step_info.ros_topic_name)
             self.create_subscription(

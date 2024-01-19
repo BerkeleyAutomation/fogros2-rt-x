@@ -94,9 +94,9 @@ def ros2_msg_data_to_tf_tensor_data(ros2_attribute, tf_feature):
         return ros2_attribute.data
     elif isinstance(tf_feature, tfds.features.Tensor):
         data = ros2_attribute.data
-        print("[error] empty array, fill in with zeros")
         # check if empty
         if len(data) == 0:
+            print(f"[error] empty array for {tf_feature}, fill in with zeros")
             return np.zeros(tf_feature.shape, dtype=tf_feature.np_dtype)
 
         # Retrieve the shape information from the MultiArrayLayout

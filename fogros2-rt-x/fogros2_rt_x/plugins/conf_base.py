@@ -98,11 +98,11 @@ class BaseDatasetConfig:
             action_info=self.action_tf_dict,
             reward_info=self.step_tf_dict["reward"],
             discount_info=self.step_tf_dict["discount"],
-            step_metadata_info={
-                "is_first": self.step_tf_dict["is_first"],
-                "is_last": self.step_tf_dict["is_last"],
-                "is_terminal": self.step_tf_dict["is_terminal"],
-            },
+            # step_metadata_info={
+            #     "is_first": self.step_tf_dict["is_first"],
+            #     "is_last": self.step_tf_dict["is_last"],
+            #     "is_terminal": self.step_tf_dict["is_terminal"],
+            # },
         )
 
     def _spec_to_tf_type_dict(self, spec):
