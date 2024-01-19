@@ -83,14 +83,12 @@ You can implement your own policy of orchestrating different topics by inheritin
 You can replay existing datasets in ROS2 with 
 ```
 source install/setup.bash
-ros2 run fogros2_rt_x replayer --ros-args -r dataset_name:=bridge 
+ros2 run fogros2_rt_x replayer --ros-args -r dataset_name:=$DATASET_NAME 
 # replace with yours, e.g. berkeley_fanuc_manipulation
 ```
-You may edit [replayer.launch.py](./fogros2-rt-x/launch/replayer.launch.py) for different datasets. 
-
 
 #### Data Visualization and Editing 
-You may visualize the collected data in the database by querying `fogros_rt_x.db` with tools such as [sqlite-web](https://github.com/coleifer/sqlite-web). You can also replay the dataset (see below) in ROS2, and visualize with rviz or foxglove. 
+You may visualize the collected data in the database by querying `fogros_rt_x.db` with tools such as [sqlite-web](https://github.com/coleifer/sqlite-web). You can also replay the dataset in ROS2, and visualize with rviz or foxglove. 
 
 
 ## ROS1 Support 
