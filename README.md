@@ -9,10 +9,10 @@ This repository contains the code for the fogros2-rt-x project. It is designed t
 1. Install ROS2 following the instructions on the official ROS2 website.
 2. Install python dependencies.
 ```
-apt-get install libgmp3-dev
+apt-get install libgmp3-dev sqlite3
 pip install google-cloud-bigquery tensorflow envlogger[tfds] numpy
 ```
-Don't use conda environment. It [does not work well](https://docs.ros.org/en/foxy/How-To-Guides/Using-Python-Packages.html) with ROS/ROS2.
+It's not recommended to use conda environment. It [does not work well](https://docs.ros.org/en/foxy/How-To-Guides/Using-Python-Packages.html) with ROS/ROS2.
 3. clone the repo
 ```
 export FOG_WS=~/fog_ws
@@ -20,7 +20,13 @@ mkdir -p $FOG_WS
 cd $FOG_WS
 git clone https://github.com/KeplerC/fogros2-rt-x.git
 ```
-4. Edit [Configuration File](./fogros2-rt-x/fogros2_rt_x/dataset_conf.py)
+4. Copy and edit [Configuration File](./fogros2-rt-x/fogros2_rt_x/plugins/$DATASET_NAME.py) for your own dataset
+For example,
+```
+export DATASET_NAME=fogros_rt_x_example
+cp $FOG_WS/fogros2-rt-x/fogros2_rt_x/plugins/template.py $FOG_WS/fogros2-rt-x/fogros2_rt_x/plugins/$DATASET_NAME.py 
+```
+
 7. compile the repo
 ```
 cd $FOG_WS
@@ -29,9 +35,10 @@ source install/setup.bash
 ```
 8. generate ROS2 message files for the tensorflow dataset types and re-compile the repo
 ```
-ros2 fgr config
+ros2 fgr config --dataset=$DATASET_NAME
 colcon build
 ```
+Note that `DATASET_NAME` should match the file name under `plugins` directory. 
 
 9. Setup google cloud with Google Cloud Setup instructions (see below)
 
@@ -47,46 +54,30 @@ sudo apt-get update && sudo apt-get install google-cloud-cli
     ```
     gcloud auth login
     ```
-3. (To be Automated) Create a Google Storage bucket through the Google Cloud Console.
-4. (To be Automated) Create a Google BigQuery table XXX.DATASET_NAME.metadata
+3. (To be Automated) Create a Google Storage bucket through the Google Cloud Console and update the bucket name to your configuration file.
 
 ## Usage 
 #### Dataset Collector
 Run dataset generator (stores ROS2 message as RLDS format) with the following instructions
 ```
 source install/setup.bash
-ros2 run fogros2_rt_x recorder
+ros2 launch fogros2_rt_x data_collector.py
+```
+This saves all the collected data through a local sqlite file `fogros_rt_x.db`
+
+#### Uploader
+The following instruction converts all the episode data that `should_export=1` in the database. 
+```
+ros2 fgr export--dataset_name=$DATASET_NAME
 ```
 
-### Adapting your own application
-Currently, there are two ways of adapting your own applications to FogROS2-RT-X. 
+#### (Optional) Customize Data Collection Policy
+Currently, FogROS2-RT-X creates a `step` based on given period of time through `PerPeriodTopicOrchestrator`. 
+Implementation can be found in [orchestrator_base.py](./fogros2-rt-x/fogros2_rt_x/plugins/orchestrator_base.py). 
+You can implement your own policy of orchestrating different topics by inheriting the base class. 
 
-#### (Option 1) Write your own ROS2 publisher
-It takes the [step](https://github.com/KeplerC/fogros2-rt-x/blob/main/fogros2_rt_x_msgs/msg/Step.msg) message type as the input; the step message is automatically generated for your dataset after you run `ros2 fgr config`. You can write your own publisher as following: 
-
-```python
-from fogros2_rt_x_msgs.msg import Step, Observation, Action
-
-publisher = Node.create_publisher(Step, 'step_info', 10)
-# initialize the data 
-observation_msg = Observation()
-action_msg = Action()
-step_msg = Step()
-
-# set your data
-step_msg.observation = observation_msg
-step_msg.action = action_msg
-...
-
-# publish it 
-publisher.publish(step_msg)
-```
-The publisher can be created with [this example](https://docs.ros.org/en/foxy/Tutorials/Beginner-Client-Libraries/Writing-A-Simple-Py-Publisher-And-Subscriber.html#id7)
-
-
-#### (Option 2) Automatic Message Collection with FogROS2-RT-X (Beta, Unstable)
-FogROS2-RT-X opens up one-to-one mapping of Observation/Action/Step field to ROS2 topic. After you run `data_collector.launch.py`, you may use `ros2 topic list` to view all the exposed topics. You may edit [Configuration File](./fogros2-rt-x/fogros2_rt_x/dataset_conf.py) to specify the desired topic to receive the specific type, or use [topic remapping](https://design.ros2.org/articles/static_remapping.html). 
-
+#### Data Visualization and Editing 
+You may visualize the collected data in the database by querying `fogros_rt_x.db` with tools such as [sqlite-web](https://github.com/coleifer/sqlite-web). You can also replay the dataset (see below) in ROS2, and visualize with rviz or foxglove. 
 
 #### Replaying with existing datasets in Open-X-Embodiment
 You can replay existing datasets in ROS2 with 
@@ -101,20 +92,6 @@ You may edit [replayer.launch.py](./fogros2-rt-x/launch/replayer.launch.py) for 
 
 For ROS1 support, use the [ros1bridge](https://github.com/ros2/ros1_bridge).
 
-## File Structure
-```
-.
-├── fogros2_rt_x
-    ├── recorder.py
-    ├── dataset_utils.py
-    ├── dataset_spec.py
-    |__ dataset_conf.py # Update this file 
-├── fogros2_rt_x_msgs
-│   ├── msg
-│   │   ├── Step.msg
-│   │   ├── Observation.msg
-│   │   └── Action.msg
-```
 
 ## Contributing
 

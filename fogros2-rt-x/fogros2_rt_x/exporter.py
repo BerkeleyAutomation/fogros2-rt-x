@@ -23,7 +23,7 @@ class DatasetExporter():
             logger=self.logger,
             metadata_database=None,
         )
-        self.storage_backend = SqliteConnector("example.db")
+        self.storage_backend = SqliteConnector("fogros_rt_x.db")
         self.episode_id = None 
 
     def execute(self):

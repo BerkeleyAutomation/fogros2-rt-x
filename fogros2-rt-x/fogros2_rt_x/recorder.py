@@ -94,7 +94,7 @@ class DatasetRecorder(Node):
         self.get_logger().info("Dataset exported")
 
         # TODO: more params
-        self.storage_backend = SqliteConnector("example.db")
+        self.storage_backend = SqliteConnector("fogros_rt_x.db")
         columns = {
             "episode_id": "INTEGER",
             "step": "BLOB",

@@ -45,7 +45,6 @@ class BaseDatasetConfig:
     Args:
         dataset_name (str): The name of the dataset.
         save_path (str): The path to save the dataset.
-        big_query_project (str): The big query project to store the dataset metadata.
         observation_spec (list): The list of observation feature specifications.
         action_spec (list): The list of action feature specifications.
         step_spec (list): The list of step feature specifications.
@@ -55,14 +54,12 @@ class BaseDatasetConfig:
         self,
         dataset_name,
         save_path,
-        big_query_project,
         observation_spec,
         action_spec,
         step_spec,
     ):
         self.dataset_name = dataset_name
         self.save_path = save_path
-        self.big_query_project = big_query_project
         self.observation_spec = observation_spec
         self.action_spec = action_spec
         self.step_spec = step_spec
