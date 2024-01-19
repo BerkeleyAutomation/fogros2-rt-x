@@ -20,20 +20,21 @@ mkdir -p $FOG_WS
 cd $FOG_WS
 git clone https://github.com/KeplerC/fogros2-rt-x.git
 ```
-4. Copy and edit [Configuration File](./fogros2-rt-x/fogros2_rt_x/plugins/$DATASET_NAME.py) for your own dataset
+4. Copy and edit the [configuration File](./fogros2-rt-x/fogros2_rt_x/plugins/$DATASET_NAME.py) for your own dataset.
 For example,
 ```
 export DATASET_NAME=fogros_rt_x_example
 cp $FOG_WS/fogros2-rt-x/fogros2_rt_x/plugins/template.py $FOG_WS/fogros2-rt-x/fogros2_rt_x/plugins/$DATASET_NAME.py 
 ```
 
-7. compile the repo
+7. Compile the repo
 ```
 cd $FOG_WS
 colcon build
 source install/setup.bash
 ```
-8. generate ROS2 message files for the tensorflow dataset types and re-compile the repo
+
+8. Generate ROS2 message files for the tensorflow dataset types and re-compile the repo
 ```
 ros2 fgr config --dataset=$DATASET_NAME
 colcon build
@@ -68,16 +69,13 @@ This saves all the collected data through a local sqlite file `fogros_rt_x.db`
 #### Uploader
 The following instruction converts all the episode data that `should_export=1` in the database. 
 ```
-ros2 fgr export--dataset_name=$DATASET_NAME
+ros2 fgr export --dataset_name=$DATASET_NAME
 ```
 
 #### (Optional) Customize Data Collection Policy
 Currently, FogROS2-RT-X creates a `step` based on given period of time through `PerPeriodTopicOrchestrator`. 
 Implementation can be found in [orchestrator_base.py](./fogros2-rt-x/fogros2_rt_x/plugins/orchestrator_base.py). 
 You can implement your own policy of orchestrating different topics by inheriting the base class. 
-
-#### Data Visualization and Editing 
-You may visualize the collected data in the database by querying `fogros_rt_x.db` with tools such as [sqlite-web](https://github.com/coleifer/sqlite-web). You can also replay the dataset (see below) in ROS2, and visualize with rviz or foxglove. 
 
 #### Replaying with existing datasets in Open-X-Embodiment
 You can replay existing datasets in ROS2 with 
@@ -87,6 +85,11 @@ ros2 run fogros2_rt_x replayer --ros-args -r dataset_name:=bridge
 # replace with yours, e.g. berkeley_fanuc_manipulation
 ```
 You may edit [replayer.launch.py](./fogros2-rt-x/launch/replayer.launch.py) for different datasets. 
+
+
+#### Data Visualization and Editing 
+You may visualize the collected data in the database by querying `fogros_rt_x.db` with tools such as [sqlite-web](https://github.com/coleifer/sqlite-web). You can also replay the dataset (see below) in ROS2, and visualize with rviz or foxglove. 
+
 
 ## ROS1 Support 
 

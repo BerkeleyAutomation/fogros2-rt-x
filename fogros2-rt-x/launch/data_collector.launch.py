@@ -33,22 +33,33 @@
 
 from launch import LaunchDescription
 from launch_ros.actions import Node
+import os
 
 
 def generate_launch_description():
     """Talker example that launches everything locally."""
     ld = LaunchDescription()
 
+    # set your dataset_name here 
+    dataset_name = ""
+    # read dataset_name from DATASET_NAME environment variable
+    # if not found, use default value
+    try:
+        if dataset_name == "":
+            dataset_name = os.environ["DATASET_NAME"]
+    except KeyError:
+        raise RuntimeError(
+            "DATASET_NAME environment variable not set; you can either edit through data_collector.launch.py or set it with export DATASET_NAME=<your_dataset_name>"
+        )
 
-    dataset_name = "berkeley_fanuc_manipulation"
-    # orchestrator node 
+    # orchestrator node
     orchestrator_node = Node(
         package="fogros2_rt_x",
         executable="orchestrator",
         output="screen",
-        parameters = [
-            {"dataset_name": dataset_name}, 
-        ]
+        parameters=[
+            {"dataset_name": dataset_name},
+        ],
     )
     ld.add_action(orchestrator_node)
 
@@ -57,9 +68,9 @@ def generate_launch_description():
         package="fogros2_rt_x",
         executable="recorder",
         output="screen",
-        parameters = [
-            {"dataset_name": dataset_name}, 
-        ]
+        parameters=[
+            {"dataset_name": dataset_name},
+        ],
     )
     ld.add_action(recorder_node)
     return ld
