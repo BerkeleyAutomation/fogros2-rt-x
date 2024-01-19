@@ -5,7 +5,11 @@ This repository contains the code for the fogros2-rt-x project. It is designed t
 
 ## Installation 
 ### Steps
-
+0. Setting environment variables
+```
+export FOG_WS=~/fog_ws # desired location for FogROS2 ROS2 workspace
+export DATASET_NAME=fogros_rt_x_example # name of the dataset
+```
 1. Install ROS2 following the instructions on the official ROS2 website.
 2. Install python dependencies.
 ```
@@ -15,7 +19,6 @@ pip install google-cloud-bigquery tensorflow envlogger[tfds] numpy
 It's not recommended to use conda environment. It [does not work well](https://docs.ros.org/en/foxy/How-To-Guides/Using-Python-Packages.html) with ROS/ROS2.
 3. clone the repo
 ```
-export FOG_WS=~/fog_ws
 mkdir -p $FOG_WS
 cd $FOG_WS
 git clone https://github.com/KeplerC/fogros2-rt-x.git
@@ -23,7 +26,6 @@ git clone https://github.com/KeplerC/fogros2-rt-x.git
 4. Copy and edit the [configuration File](./fogros2-rt-x/fogros2_rt_x/plugins/$DATASET_NAME.py) for your own dataset.
 For example,
 ```
-export DATASET_NAME=fogros_rt_x_example
 cp $FOG_WS/fogros2-rt-x/fogros2_rt_x/plugins/template.py $FOG_WS/fogros2-rt-x/fogros2_rt_x/plugins/$DATASET_NAME.py 
 ```
 
