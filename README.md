@@ -13,7 +13,7 @@ export DATASET_NAME=fogros_rt_x_example # name of the dataset
 1. Install ROS2 following the instructions on the official ROS2 website.
 2. Install python dependencies.
 ```
-apt-get install libgmp3-dev sqlite3
+apt-get install libgmp-dev sqlite3 
 pip install google-cloud-bigquery tensorflow envlogger[tfds] numpy
 ```
 It's not recommended to use conda environment. It [does not work well](https://docs.ros.org/en/foxy/How-To-Guides/Using-Python-Packages.html) with ROS/ROS2.
