@@ -10,8 +10,8 @@ import pprint
 import ros2_numpy
 import tensorflow as tf
 from .dataset_spec import ros_multi_array_to_tf_dtype_map, ros_class_to_tf_dtype_map, FeatureSpec
-from .conf_base import *
 from .dataset_utils import to_native_class
+from .conf_base import *
 
 class BagManager():
     def __init__(self):
@@ -78,19 +78,10 @@ class BagManager():
         action_spec = []
         step_spec = []
         for topic_name in observation_topics:
-            print(topic_name, self.get_tf_configuration(topic_name))
             observatio_spec.append(FeatureSpec(topic_name, self.get_tf_configuration(topic_name)))
         for topic_name in action_topics:
-            print(topic_name, self.get_tf_configuration(topic_name))
             action_spec.append(FeatureSpec(topic_name, self.get_tf_configuration(topic_name)))
         for topic_name in step_topics:
-            print(topic_name, self.get_tf_configuration(topic_name))
             step_spec.append(FeatureSpec(topic_name, self.get_tf_configuration(topic_name)))
         
-        return BaseDatasetConfig(
-            dataset_name="berkeley_fanuc_manipulation",
-            save_path="/home/ubuntu/open-x-embodiment/playground_ds",
-            observation_spec=observatio_spec,
-            action_spec=action_spec,
-            step_spec=step_spec,
-        )
+        return observatio_spec, action_spec, step_spec
