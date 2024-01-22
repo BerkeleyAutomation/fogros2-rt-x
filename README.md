@@ -3,6 +3,16 @@
 
 This repository contains the code for the fogros2-rt-x project. It is designed to work with ROS and TensorFlow for data collection. Note that this is a very early prototype that hacked within a week. Please submit any issues/bugs through github issues. Also checkout https://github.com/KeplerC/fogros2-rt-x/issues/1 for known issues and upcoming features. 
 
+### Current Workflow 
+Currently, it works as following:
+1. (User) configures what topics should be subscribed and how the topics are orchstrated 
+as observation-action pair; FogROS2-RT-X library provides helper functions and utilities to streamline the process. 
+2. FogROS2-RT-X stores the data with a private relational database locally, or on the edge, or on the cloud. By default, we use sqlite, but this can be easily adjusted. 
+3. (User) manages all the collected data through the private relational database(e.g. chooses what dataset shall be exported to public). 
+4. FogROS2-RT-X exports the dataset in standard RT-X data format. 
+
+Note that this doesn't reflect the ultimate architecture. We welcome all the archtectual suggestions to move foward. 
+
 ## Installation 
 ### Steps
 0. Setting environment variables
@@ -68,7 +78,7 @@ ros2 launch fogros2_rt_x data_collector.py
 ```
 This saves all the collected data through a local sqlite file `fogros_rt_x.db`
 
-#### Uploader
+#### Dataset Export
 The following instruction converts all the episode data that `should_export=1` in the database. 
 ```
 ros2 fgr export --dataset_name=$DATASET_NAME

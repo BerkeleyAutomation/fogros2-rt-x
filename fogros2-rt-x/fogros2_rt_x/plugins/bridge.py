@@ -5,9 +5,6 @@ from .orchestrator_base import PerPeriodTopicOrchestrator
 # bridge dataset
 class BridgeDatasetConfig(BaseDatasetConfig):
     def __init__(self):
-        # the name of the dataset
-        # need to match the file name in the plugins folder
-        DATASET_NAME = "bridge"
         # the path can be a local directory or a google cloud storage bucket
         # it can also be a google cloud storage bucket
         # SAVE_PATH = "gs://open-x-embodiment/playground_ds"
@@ -25,9 +22,7 @@ class BridgeDatasetConfig(BaseDatasetConfig):
             FeatureSpec("open_gripper", Scalar(dtype=tf.bool)),
             FeatureSpec(
                 "rotation_delta",
-                Tensor(shape=(3,), dtype=tf.float32),
-                is_triggering_topic=True,
-            ),
+                Tensor(shape=(3,), dtype=tf.float32)),
             FeatureSpec("terminate_episode", Scalar(dtype=tf.float64)),
             FeatureSpec("world_vector", Tensor(shape=(3,), dtype=tf.float32)),
         ]
@@ -38,7 +33,7 @@ class BridgeDatasetConfig(BaseDatasetConfig):
         ]
 
         super().__init__(
-            dataset_name=DATASET_NAME,
+            dataset_name=__file__.split("/")[-1].split(".")[0], # "the file name of the plugin"
             save_path=SAVE_PATH,
             observation_spec=OBSERVATION_SPEC,
             action_spec=ACTION_SPEC,
