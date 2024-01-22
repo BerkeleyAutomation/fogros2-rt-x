@@ -53,13 +53,13 @@ from std_srvs.srv import Empty
 import random
 import pickle 
 from .dataset_manager import DatasetManager
-from .plugins.orchestrator_base import BaseTopicOrchestrator
+from .plugins.orchestrator_base import *
 
 def main(args=None):
     rclpy.init(args=args)
 
     dataset_manager = DatasetManager(
-        orchestrator=BaseTopicOrchestrator(),
+        orchestrator=VeryBasicTopicOrchestrator(),
         dataset_directory = "./datasets",
         observation_topics = ["/wrist_image", "/image", "/end_effector_state", "/state"],
         action_topics = ["/action"],

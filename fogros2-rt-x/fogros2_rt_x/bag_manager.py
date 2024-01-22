@@ -35,6 +35,7 @@ class BagManager:
         self.topic_name_to_tf_feature_map = {}
 
     def __del__(self):
+        self.orchestrator._new_episode()
         self.reader.close()
 
     def get_the_first_message_of_the_topic(self, reader, topic):

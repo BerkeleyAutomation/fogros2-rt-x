@@ -2,7 +2,7 @@ import logging
 from .bag_manager import BagManager
 from .backend_writer import CloudBackendWriter
 from .conf_base import *
-
+from .dataset_spec import feature_spec_list_to_default_value_dict
 
 class DatasetManager:
     def __init__(
@@ -46,5 +46,11 @@ class DatasetManager:
             metadata_database=None,
         )
         self.orchestrator.set_writer(self.writer)
+
+        self.orchestrator.set_default_values(
+            feature_spec_list_to_default_value_dict(observation_spec),
+            feature_spec_list_to_default_value_dict(action_spec),
+            feature_spec_list_to_default_value_dict(step_spec),
+        )
 
         self.bag_manager.iterate_through_all_messages()

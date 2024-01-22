@@ -133,6 +133,15 @@ def ros2_msg_data_to_tf_tensor_data(ros2_attribute, tf_feature):
             f"feature type {type(tf_feature)} for {tf_feature} not implemented"
         )
 
+def get_default_value_from_tf_feature(tf_feature):
+    if isinstance(tf_feature, tfds.features.Image):
+        return np.zeros(tf_feature.shape, dtype=np.uint8)
+    elif isinstance(tf_feature, tfds.features.Text):
+        return ""
+    elif isinstance(tf_feature, tfds.features.Scalar):
+        return 0
+    elif isinstance(tf_feature, tfds.features.Tensor):
+        return np.zeros(tf_feature.shape, dtype=tf_feature.dtype)
 
 def cast_tensor_to_class_type(tensor, class_type):
     print(tensor.numpy(), tensor.numpy().shape)
@@ -302,7 +311,11 @@ class FeatureSpec:
         self.ros_type = tf_feature_definition_to_ros_msg_class(tf_type)
         self.is_triggering_topic = is_triggering_topic
         self.default_value = default_value
-
+        if self.default_value is not None:
+            self.default_value = get_default_value_from_tf_feature(
+                self.tf_type
+            )
+        
     def convert_tf_tensor_data_to_ros2_msg(self, tensor_data):
         """
         This function converts TensorFlow tensors to ROS (Robot Operating System) message attributes.
@@ -503,6 +516,18 @@ class DatasetFeatureSpec:
             ]
         )
 
+def feature_spec_list_to_default_value_dict(feature_spec_list):
+    """
+    Converts a list of feature specifications to a dictionary of default values.
+
+    Args:
+        feature_spec_list (list): The list of feature specifications.
+
+    Returns:
+        dict: The dictionary of default values.
+    """
+
+    return {spec.tf_name: spec.default_value for spec in feature_spec_list}
 
 # def cast_tensor_to_class_type(tensor, class_type):
 #     return class_type(tensor.numpy())

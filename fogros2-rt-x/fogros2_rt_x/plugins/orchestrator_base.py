@@ -33,28 +33,31 @@
 
 import dm_env
 from envlogger import step_data
-import logging 
-class BaseTopicOrchestrator():
-    def __init__(self,
-                reward = 0.0,
-                discount = 1.0
-                ):
-        self.logger = logging.getLogger(__name__)
-        self.step_type = dm_env.StepType.FIRST
-        self.observation = dict() 
-        self.action = dict()
-        self.step = dict()
-        self.writer = None 
+import logging
 
+
+class BaseTopicOrchestrator:
+    def __init__(self, reward=0.0, discount=1.0):
+        self.logger = logging.getLogger(__name__)
+        self.writer = None
         self.reward = reward
         self.discount = discount
 
+        # default values
+        self.default_observation = dict()
+        self.default_action = dict()
+        self.default_step = dict()
+
+        self.step_type = dm_env.StepType.FIRST
+        self.observation = dict()
+        self.action = dict()
+        self.step = dict()
+
     def on_observation_topic(self, topic_name, data):
         self.observation[topic_name] = data
-        
+
     def on_action_topic(self, topic_name, data):
         self.action[topic_name] = data
-        self._new_step()
 
     def on_step_topic(self, topic_name, data):
         self.step[topic_name] = data
@@ -62,44 +65,63 @@ class BaseTopicOrchestrator():
     def on_timestamp(self, timestamp, topic_name):
         pass
 
-    def _new_step(self):
+    def _reset(self):
+        self.step_type = dm_env.StepType.FIRST
+        self.observation = self.default_observation
+        self.action = self.default_action
+        self.step = self.default_step
 
+    def _new_step(self):
         timestep = dm_env.TimeStep(
-                step_type=self.step_type,
-                reward=self.step["reward"] if "reward" in self.step else self.reward,
-                discount=self.step["discount"] if "discount" in self.step else self.discount,
-                observation=self.observation,
-            )
+            step_type=self.step_type,
+            reward=self.step["reward"] if "reward" in self.step else self.reward,
+            discount=self.step["discount"]
+            if "discount" in self.step
+            else self.discount,
+            observation=self.observation,
+        )
         stepdata = step_data.StepData(
-                timestep=timestep, 
-                action=self.action, 
-                custom_data=None
-            )
+            timestep=timestep, action=self.action, custom_data=None
+        )
 
         if self.writer is None:
             self.logger.error("Writer is not set")
             return
-        
+
         if self.step_type == dm_env.StepType.FIRST:
+            self.logger.info("New episode")
             self.writer.record_step(stepdata, is_new_episode=True)
             self.step_type = dm_env.StepType.MID
         else:
             self.writer.record_step(stepdata, is_new_episode=False)
-    
+
     def _new_episode(self):
-        self.step_type = dm_env.StepType.LAST
-        self._new_step()
+        # TODO: figure out the last one 
+        # self.step_type = dm_env.StepType.LAST
+        # self._new_step()
+        self._reset()
 
-        # reset all the data
-        self.step_type = dm_env.StepType.FIRST
-        self.reward = 0.0
-        self.discount = 0.0
-        self.observation = dict()
-        self.action = dict()
-        self.step = dict()
-
-
-    def set_writer (self, writer):
+    def set_writer(self, writer):
         self.writer = writer
 
+    def set_default_values(self, observation, action, step):
+        self.observation = observation
+        self.action = action
+        self.step = step
 
+
+class VeryBasicTopicOrchestrator(BaseTopicOrchestrator):
+    def __init__(self, reward=0.0, discount=1.0):
+        super().__init__(reward, discount)
+
+    def on_observation_topic(self, topic_name, data):
+        super().on_observation_topic(topic_name, data)
+        self._new_step()
+
+    def on_action_topic(self, topic_name, data):
+        super().on_action_topic(topic_name, data)
+        self._new_step()
+
+    def on_step_topic(self, topic_name, data):
+        super().on_step_topic(topic_name, data)
+        self._new_episode()
