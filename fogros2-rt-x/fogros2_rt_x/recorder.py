@@ -36,6 +36,8 @@ from .exporter import DatasetExporter
 
 import rclpy
 from rclpy.node import Node
+from tensorflow_datasets.core.features import Tensor, Image, FeaturesDict, Scalar, Text
+
 # from .dataset_utils import *
 # from fogros2_rt_x_msgs.msg import Step, Observation, Action
 import envlogger
@@ -147,11 +149,19 @@ class DatasetRecorder(Node):
         topic_type = self.topics[topic_name].msgtype
         print(msg.__msgtype__)
         msg = to_native_class(msg)
-        print(msg)
+        # print(msg)
 
         data = self.msg_to_numpy(msg, topic_type)
 
-        print(data)
+        # print(data)
+
+        tensor_shape = data.shape
+        tensor_dtype = data.dtype
+        print(topic_name, Tensor(
+            shape=tensor_shape,
+            dtype=tensor_dtype,
+        ))
+
         return data
         
 
@@ -164,7 +174,10 @@ class DatasetRecorder(Node):
     ):
         for topic_name in observation_topics:
             print(self.get_tf_configuration(topic_name))
-
+        for topic_name in action_topics:
+            print(self.get_tf_configuration(topic_name))
+        for topic_name in step_topics:
+            print(self.get_tf_configuration(topic_name))
 
 def main(args=None):
     rclpy.init(args=args)
