@@ -38,6 +38,7 @@ from fogros2_rt_x_msgs.msg import Step, Observation, Action
 from cv_bridge import CvBridge
 from std_msgs.msg import MultiArrayLayout, MultiArrayDimension
 from sensor_msgs.msg import Image
+import ros2_numpy
 
 tf_dtype_to_ros_class_map = {
     tf.float32: "std_msgs/Float32",
@@ -74,6 +75,31 @@ tf_tensor_dtype_to_ros_multi_array_map = {
 ros_multi_array_to_tf_dtype_map = {v: k for k, v in tf_tensor_dtype_to_ros_multi_array_map.items()}
 
 
+
+def msg_to_numpy(msg, topic_type):
+    print(topic_type)
+    if topic_type in ros_multi_array_to_tf_dtype_map:
+        data = msg.data
+        data_type = ros_multi_array_to_tf_dtype_map[topic_type]
+        # TODO: check if empty
+        # if len(data) == 0:
+        #     print(f"[error] empty array for {tf_feature}, fill in with zeros")
+        #     return numpy.zeros(tf_feature.shape, dtype=tf_feature.np_dtype)
+
+        # Retrieve the shape information from the MultiArrayLayout
+        original_shape = [dim.size for dim in msg.layout.dim]
+        # Convert the data into a TensorFlow tensor
+        tensor = tf.constant(data, dtype=data_type)
+
+        # Reshape the tensor to its original shape
+        reshaped_tensor = tf.reshape(tensor, original_shape)
+        # Convert the data to a numpy array and then reshape it
+        return reshaped_tensor.numpy()
+    else:
+        
+        return ros2_numpy.numpify(msg)
+        
+
 def ros2_msg_data_to_tf_tensor_data(ros2_attribute, tf_feature):
     """
     This function converts ROS (Robot Operating System) message attributes to TensorFlow dataset features.
@@ -97,21 +123,12 @@ def ros2_msg_data_to_tf_tensor_data(ros2_attribute, tf_feature):
     elif isinstance(tf_feature, tfds.features.Scalar):
         return ros2_attribute.data
     elif isinstance(tf_feature, tfds.features.Tensor):
-        data = ros2_attribute.data
-        # check if empty
-        if len(data) == 0:
-            print(f"[error] empty array for {tf_feature}, fill in with zeros")
-            return np.zeros(tf_feature.shape, dtype=tf_feature.np_dtype)
-
-        # Retrieve the shape information from the MultiArrayLayout
-        original_shape = [dim.size for dim in ros2_attribute.layout.dim]
-        # Convert the data into a TensorFlow tensor
-        tensor = tf.constant(data, dtype=tf_feature.dtype)
-
-        # Reshape the tensor to its original shape
-        reshaped_tensor = tf.reshape(tensor, original_shape)
-        # Convert the data to a numpy array and then reshape it
-        return reshaped_tensor.numpy()
+        ros2_type = ros2_attribute.__class__.__name__
+        if ros2_type.endswith("MultiArray"):
+            # a workaround for the table querying
+            # TODO: write a function instead of hash table checking
+            ros2_type = "std_msgs/" + ros2_type 
+        return msg_to_numpy(ros2_attribute, ros2_type)
     else:
         raise NotImplementedError(
             f"feature type {type(tf_feature)} for {tf_feature} not implemented"
