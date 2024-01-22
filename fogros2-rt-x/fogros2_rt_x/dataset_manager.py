@@ -7,6 +7,7 @@ from .conf_base import *
 class DatasetManager:
     def __init__(
         self,
+        orchestrator,
         dataset_directory,
         observation_topics,
         action_topics,
@@ -14,7 +15,10 @@ class DatasetManager:
     ):
         self.logger = logging.getLogger(__name__)
         self.dataset_directory = dataset_directory
+        self.orchestrator = orchestrator
+
         self.bag_manager = BagManager(
+            self.orchestrator,
             observation_topics,
             action_topics,
             step_topics,
@@ -41,5 +45,6 @@ class DatasetManager:
             logger=self.logger,
             metadata_database=None,
         )
+        self.orchestrator.set_writer(self.writer)
 
         self.bag_manager.iterate_through_all_messages()

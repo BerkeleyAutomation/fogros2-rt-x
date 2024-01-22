@@ -31,124 +31,75 @@
 # PROVIDED HEREUNDER IS PROVIDED "AS IS". REGENTS HAS NO OBLIGATION TO PROVIDE
 # MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
-import rclpy
-from rclpy.node import Node
-
-from fogros2_rt_x_msgs.msg import Step, Observation, Action
-import envlogger
+import dm_env
 from envlogger import step_data
-import tensorflow_datasets as tfds
-from envlogger.backends import tfds_backend_writer
-import functools
+import logging 
+class BaseTopicOrchestrator():
+    def __init__(self,
+                reward = 0.0,
+                discount = 1.0
+                ):
+        self.logger = logging.getLogger(__name__)
+        self.step_type = dm_env.StepType.FIRST
+        self.observation = dict() 
+        self.action = dict()
+        self.step = dict()
+        self.writer = None 
 
-from std_srvs.srv import Empty
+        self.reward = reward
+        self.discount = discount
 
+    def on_observation_topic(self, topic_name, data):
+        self.observation[topic_name] = data
+        
+    def on_action_topic(self, topic_name, data):
+        self.action[topic_name] = data
+        self._new_step()
 
-class BaseTopicOrchestrator(Node):
-    def __init__(self, config):
-        super().__init__("fogros2_rt_x_orchestrator")
-        self.logger = self.get_logger()
+    def on_step_topic(self, topic_name, data):
+        self.step[topic_name] = data
 
-        self.config = config
-        self.feature_spec = self.config.get_dataset_feature_spec()
+    def on_timestamp(self, timestamp, topic_name):
+        pass
 
-        self._init_observation_topics()
-        self._init_action_topics()
-        self._init_step_information_topics()
+    def _new_step(self):
 
-        self.observation_msg = Observation()
-        self.action_msg = Action()
-        self.step_msg = Step()
-
-        self.publisher = self.create_publisher(Step, "step_info", 10)
-
-        # used to notify for new episode
-        self.new_episode_notification_client = self.create_client(
-            Empty, "new_episode_notification_service"
-        )
-        self.new_episode_notification_req = Empty.Request()
-
-    def _init_observation_topics(self):
-        def create_dynamic_observation_callback(topic_name):
-            def observation_callback(self, msg):
-                self.logger.info(f"Received observation message on {topic_name}")
-                setattr(self.observation_msg, topic_name, msg)
-                self.step_msg.observation = self.observation_msg
-
-            return functools.partial(observation_callback, self)
-
-        # create subscriptions for all observation topics
-        for observation in self.feature_spec.observation_spec:
-            callback = create_dynamic_observation_callback(observation.ros_topic_name)
-            self.create_subscription(
-                observation.ros_type,
-                observation.ros_topic_name,
-                callback,
-                10,
+        timestep = dm_env.TimeStep(
+                step_type=self.step_type,
+                reward=self.step["reward"] if "reward" in self.step else self.reward,
+                discount=self.step["discount"] if "discount" in self.step else self.discount,
+                observation=self.observation,
+            )
+        stepdata = step_data.StepData(
+                timestep=timestep, 
+                action=self.action, 
+                custom_data=None
             )
 
-    def _init_action_topics(self):
-        def create_dynamic_action_callback(topic_name):
-            def action_callback(self, msg):
-                self.logger.info(f"Received action message on {topic_name}")
-                setattr(self.action_msg, topic_name, msg)
-                self.step_msg.action = self.action_msg
-
-            return functools.partial(action_callback, self)
-
-        # create publishers for all action topics
-        for action in self.feature_spec.action_spec:
-            callback = create_dynamic_action_callback(action.ros_topic_name)
-            self.create_subscription(
-                action.ros_type, action.ros_topic_name, callback, 10
-            )
-
-    def _init_step_information_topics(self):
-        def create_dynamic_step_callback(topic_name):
-            def step_callback(self, msg):
-                self.logger.info(f"Received step message on {topic_name}")
-                setattr(self.step_msg, topic_name, msg)
-
-            return functools.partial(step_callback, self)
-
-        # create subscriptions for all step topics
-        for step_info in self.feature_spec.step_spec:
-            callback = create_dynamic_step_callback(step_info.ros_topic_name)
-            self.create_subscription(
-                step_info.ros_type,
-                step_info.ros_topic_name,
-                callback,
-                10,
-            )
-
+        if self.writer is None:
+            self.logger.error("Writer is not set")
+            return
+        
+        if self.step_type == dm_env.StepType.FIRST:
+            self.writer.record_step(stepdata, is_new_episode=True)
+            self.step_type = dm_env.StepType.MID
+        else:
+            self.writer.record_step(stepdata, is_new_episode=False)
+    
     def _new_episode(self):
-        while not self.new_episode_notification_client.wait_for_service(
-            timeout_sec=1.0
-        ):
-            self.get_logger().info("Service not available, waiting again...")
-        self.future = self.new_episode_notification_client.call_async(
-            self.new_episode_notification_req
-        )
+        self.step_type = dm_env.StepType.LAST
+        self._new_step()
+
+        # reset all the data
+        self.step_type = dm_env.StepType.FIRST
+        self.reward = 0.0
+        self.discount = 0.0
+        self.observation = dict()
+        self.action = dict()
+        self.step = dict()
 
 
-class PerPeriodTopicOrchestrator(BaseTopicOrchestrator):
-    def __init__(self, config):
-        super().__init__(config)
+    def set_writer (self, writer):
+        self.writer = writer
 
-        self.declare_parameter("per_step_interval", 0.2)  # second
-        self.per_step_interval = self.get_parameter("per_step_interval").value
 
-        self.declare_parameter("per_episode_interval", 1)  # second
-        self.per_episode_interval = self.get_parameter("per_episode_interval").value
-
-        self.create_timer(self.per_step_interval, self.per_step_timer_callback)
-        self.create_timer(self.per_episode_interval, self.per_episode_timer_callback)
-
-    def per_step_timer_callback(self):
-        self.logger.info("Publishing step message")
-        self.publisher.publish(self.step_msg)
-
-    def per_episode_timer_callback(self):
-        # since we use is_first to indicate the start of a new episode
-        self.logger.info("new episode")
-        self._new_episode()

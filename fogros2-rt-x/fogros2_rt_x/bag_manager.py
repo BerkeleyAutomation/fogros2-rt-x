@@ -15,11 +15,18 @@ from .dataset_utils import to_native_class
 from .conf_base import *
 
 
+
 class BagManager:
-    def __init__(self, observation_topics=[], action_topics=[], step_topics=[]):
+    def __init__(self, 
+                 orchestrator, 
+                 observation_topics=[], 
+                 action_topics=[], 
+                 step_topics=[],
+                 ):
         self.observation_topics = observation_topics
         self.action_topics = action_topics
         self.step_topics = step_topics
+        self.orchestrator = orchestrator
 
         # create reader instance and open for reading
         self.reader = AnyReader([Path("./datasets/rosbag2_2024_01_22-02_59_18")])
@@ -100,21 +107,16 @@ class BagManager:
         for connection, timestamp, rawdata in self.reader.messages(
             connections=self.reader.connections
         ):
+            self.orchestrator.on_timestamp(timestamp, connection.topic)
             if connection.topic in self.observation_topics:
                 data = self._get_data_from_raw_data(rawdata, connection)
-                print(connection.topic)
-                print(data)
-                print(timestamp)
-                print()
+                self.orchestrator.on_observation_topic(connection.topic, data)
+                
             if connection.topic in self.action_topics:
                 data = self._get_data_from_raw_data(rawdata, connection)
-                print(connection.topic)
-                print(data)
-                print(timestamp)
-                print()
+                self.orchestrator.on_action_topic(connection.topic, data)
+
             if connection.topic in self.step_topics:
                 data = self._get_data_from_raw_data(rawdata, connection)
-                print(connection.topic)
-                print(data)
-                print(timestamp)
-                print()
+                self.orchestrator.on_step_topic(connection.topic, data)
+
