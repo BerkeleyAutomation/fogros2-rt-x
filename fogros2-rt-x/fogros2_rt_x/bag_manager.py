@@ -17,27 +17,59 @@ from .conf_base import *
 
 
 class BagManager:
-    def __init__(self, 
-                 orchestrator, 
-                 observation_topics=[], 
-                 action_topics=[], 
-                 step_topics=[],
-                 ):
-        self.observation_topics = observation_topics
-        self.action_topics = action_topics
-        self.step_topics = step_topics
-        self.orchestrator = orchestrator
+    def __init__(
+            self, bag_path
+            ):
 
+        self.bag_path = bag_path
         # create reader instance and open for reading
-        self.reader = AnyReader([Path("./datasets/rosbag2_2024_01_22-02_59_18")])
+        self.reader = AnyReader([Path(bag_path)])
         self.reader.open()
 
         self.topic_name_to_tf_feature_map = {}
 
     def __del__(self):
-        self.orchestrator._new_episode()
+        # self.orchestrator._new_episode()
         self.reader.close()
 
+    def get_metadata(self):
+        
+        metadata = {}
+        metadata["bag_path"] = self.bag_path
+        metadata["duraction"] = self.reader.duration
+        metadata["start_time"] = self.reader.start_time
+        metadata["end_time"] = self.reader.end_time
+        metadata["message_count"] = self.reader.message_count
+        
+        # iterate through each topic and put the first message to metadata
+        # TODO: later generate a gif 
+        for topic_name in self.reader.topics:
+            topic_name_in_sql = topic_name.replace("/", "_")
+            msg = self.get_the_first_message_of_the_topic(self.reader, topic_name)
+            topic_type = self.reader.topics[topic_name].msgtype.replace("/msg", "")
+            metadata[topic_name_in_sql + "_topic_type"] = topic_type
+            print( self.reader.topics[topic_name])
+            metadata[topic_name_in_sql + "_num_msgs"] = self.reader.topics[topic_name].msgcount
+            # metadata[topic_name + "qos"] = self.reader.topics[topic_name].qos_profile
+            if msg is not None:
+                if topic_type == "sensor_msgs/Image":
+                    # save the image as local file 
+                    msg = to_native_class(msg)
+                    import cv2 
+                    import numpy as np
+                    data = msg_to_numpy(msg, topic_type)
+                    path = "/tmp/test" + topic_name_in_sql + self.bag_path.replace("/", "") + ".png"
+                    cv2.imwrite(path, data)
+                    metadata[topic_name_in_sql + "_sample"] = path
+                elif topic_type == "std_msgs/String":
+                    msg = to_native_class(msg)
+                    metadata[topic_name_in_sql + "_sample"] = msg.data
+                # msg = to_native_class(msg)
+                # # print(msg)
+                # metadata[topic_name_in_sql + "_sample"] = msg
+                
+        return metadata
+    
     def get_the_first_message_of_the_topic(self, reader, topic):
         for connection, timestamp, rawdata in reader.messages(
             connections=reader.connections
@@ -76,19 +108,22 @@ class BagManager:
 
     def generate_tensorflow_configuration_file(
         self,
+        observation_topics,
+        action_topics,
+        step_topics,
     ):
         observatio_spec = []
         action_spec = []
         step_spec = []
-        for topic_name in self.observation_topics:
+        for topic_name in observation_topics:
             tf_feature = self.get_tf_configuration(topic_name)
             observatio_spec.append(FeatureSpec(topic_name, tf_feature))
             self.topic_name_to_tf_feature_map[topic_name] = tf_feature
-        for topic_name in self.action_topics:
+        for topic_name in action_topics:
             tf_feature = self.get_tf_configuration(topic_name)
             action_spec.append(FeatureSpec(topic_name, tf_feature))
             self.topic_name_to_tf_feature_map[topic_name] = tf_feature
-        for topic_name in self.step_topics:
+        for topic_name in step_topics:
             tf_feature = self.get_tf_configuration(topic_name)
             step_spec.append(FeatureSpec(topic_name, tf_feature))
             self.topic_name_to_tf_feature_map[topic_name] = tf_feature
@@ -104,20 +139,25 @@ class BagManager:
         )
         return data
     
-    def iterate_through_all_messages(self):
+    def iterate_through_all_messages(
+            self, 
+            observation_topics,
+            action_topics,
+            step_topics,
+        ):
         for connection, timestamp, rawdata in self.reader.messages(
             connections=self.reader.connections
         ):
             self.orchestrator.on_timestamp(timestamp, connection.topic)
-            if connection.topic in self.observation_topics:
+            if connection.topic in observation_topics:
                 data = self._get_data_from_raw_data(rawdata, connection)
                 self.orchestrator.on_observation_topic(connection.topic, data)
                 
-            if connection.topic in self.action_topics:
+            if connection.topic in action_topics:
                 data = self._get_data_from_raw_data(rawdata, connection)
                 self.orchestrator.on_action_topic(connection.topic, data)
 
-            if connection.topic in self.step_topics:
+            if connection.topic in step_topics:
                 data = self._get_data_from_raw_data(rawdata, connection)
                 self.orchestrator.on_step_topic(connection.topic, data)
 

@@ -58,13 +58,17 @@ from .plugins.orchestrator_base import *
 def main(args=None):
     rclpy.init(args=args)
 
-    dataset_manager = DatasetManager(
-        orchestrator=PerTimeIntervalTopicOrchestrator(),
+    DatasetManager(
         dataset_directory = "./datasets",
-        observation_topics = ["/wrist_image", "/image", "/end_effector_state", "/state"],
-        action_topics = ["/action"],
-        step_topics = ["/language_embedding", "/language_instruction", "/discount", "/reward"],
+        sql_db_location = "./datasets/dataset.db",
     )
+    # dataset_manager = DatasetManager(
+    #     orchestrator=PerTimeIntervalTopicOrchestrator(),
+    #     dataset_directory = "./datasets",
+    #     observation_topics = ["/wrist_image", "/image", "/end_effector_state", "/state"],
+    #     action_topics = ["/action"],
+    #     step_topics = ["/language_embedding", "/language_instruction", "/discount", "/reward"],
+    # )
 
     # rclpy.spin(dataset_recorder)
 
