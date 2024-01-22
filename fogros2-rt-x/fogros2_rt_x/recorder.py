@@ -58,7 +58,7 @@ import pprint
 from rosbags.highlevel import AnyReader
 
 import ros2_numpy
-from .dataset_spec import ros_multi_array_to_tf_dtype_map
+from .dataset_spec import ros_multi_array_to_tf_dtype_map, ros_class_to_tf_dtype_map
 
 # from __future__ import annotations
 
@@ -123,9 +123,9 @@ class DatasetRecorder(Node):
                 return msg
 
     def msg_to_numpy(self, msg, topic_type):
-        if topic_type.endswith("MultiArray"):
+        if topic_type in ros_multi_array_to_tf_dtype_map:
             data = msg.data
-            data_type = ros_multi_array_to_tf_dtype_map[topic_type.replace("/msg", "")]
+            data_type = ros_multi_array_to_tf_dtype_map[topic_type]
             # TODO: check if empty
             # if len(data) == 0:
             #     print(f"[error] empty array for {tf_feature}, fill in with zeros")
@@ -146,25 +146,22 @@ class DatasetRecorder(Node):
 
     def get_tf_configuration(self, topic_name):
         msg = self.get_the_first_message_of_the_topic(self.reader, topic_name)
-        topic_type = self.topics[topic_name].msgtype
-        print(msg.__msgtype__)
-        msg = to_native_class(msg)
-        # print(msg)
+        topic_type = self.topics[topic_name].msgtype.replace("/msg", "")
 
-        data = self.msg_to_numpy(msg, topic_type)
-
-        # print(data)
-
-        tensor_shape = data.shape
-        tensor_dtype = data.dtype
-        print(topic_name, Tensor(
-            shape=tensor_shape,
-            dtype=tensor_dtype,
-        ))
-
-        return data
-        
-
+        # special case
+        if topic_type == "std_msgs/String":
+            return Text()
+        elif topic_type in ros_class_to_tf_dtype_map:
+            return Scalar(dtype = ros_class_to_tf_dtype_map[topic_type])
+        else:
+            msg = to_native_class(msg)
+            data = self.msg_to_numpy(msg, topic_type)
+            tensor_shape = data.shape
+            tensor_dtype = data.dtype
+            return Tensor(
+                shape=tensor_shape,
+                dtype=tensor_dtype,
+            )
 
     def generate_tensorflow_configuration_file(
             self,
@@ -173,11 +170,11 @@ class DatasetRecorder(Node):
             step_topics = [],
     ):
         for topic_name in observation_topics:
-            print(self.get_tf_configuration(topic_name))
+            print(topic_name, self.get_tf_configuration(topic_name))
         for topic_name in action_topics:
-            print(self.get_tf_configuration(topic_name))
+            print(topic_name, self.get_tf_configuration(topic_name))
         for topic_name in step_topics:
-            print(self.get_tf_configuration(topic_name))
+            print(topic_name, self.get_tf_configuration(topic_name))
 
 def main(args=None):
     rclpy.init(args=args)
