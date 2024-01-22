@@ -54,6 +54,8 @@ tf_dtype_to_ros_class_map = {
     tf.string: "std_msgs/String",
 }
 
+ros_class_to_tf_dtype_map = {v: k for k, v in tf_dtype_to_ros_class_map.items()}
+
 tf_tensor_dtype_to_ros_multi_array_map = {
     tf.float32: "std_msgs/Float32MultiArray",
     tf.float64: "std_msgs/Float64MultiArray",
@@ -68,6 +70,8 @@ tf_tensor_dtype_to_ros_multi_array_map = {
     tf.bool: "std_msgs/BoolMultiArray",
     tf.string: "std_msgs/StringMultiArray",
 }
+
+ros_multi_array_to_tf_dtype_map = {v: k for k, v in tf_tensor_dtype_to_ros_multi_array_map.items()}
 
 
 def ros2_msg_data_to_tf_tensor_data(ros2_attribute, tf_feature):

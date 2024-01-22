@@ -56,6 +56,7 @@ import pprint
 from rosbags.highlevel import AnyReader
 
 import ros2_numpy
+from .dataset_spec import ros_multi_array_to_tf_dtype_map
 
 # from __future__ import annotations
 
@@ -122,7 +123,7 @@ class DatasetRecorder(Node):
     def msg_to_numpy(self, msg, topic_type):
         if topic_type.endswith("MultiArray"):
             data = msg.data
-            data_type = "Float64"
+            data_type = ros_multi_array_to_tf_dtype_map[topic_type.replace("/msg", "")]
             # TODO: check if empty
             # if len(data) == 0:
             #     print(f"[error] empty array for {tf_feature}, fill in with zeros")
