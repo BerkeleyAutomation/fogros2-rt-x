@@ -170,3 +170,42 @@ def get_orchestrator_from_str(dataset_str):
                 dataset_str
             )
         )
+
+
+
+import importlib
+import numpy 
+NATIVE_CLASSES: dict = {}
+
+def to_native_class(msg):
+    """Convert rosbags message to native message.
+
+    Args:
+        msg: Rosbags message.
+
+    Returns:
+        Native message.
+
+    """
+    if isinstance(msg, (list)):
+        return [to_native_class(x) for x in msg]
+    msgtype: str = msg.__msgtype__
+    if msgtype not in NATIVE_CLASSES:
+        pkg, name = msgtype.rsplit('/', 1)
+        NATIVE_CLASSES[msgtype] = getattr(importlib.import_module(pkg.replace('/', '.')), name)
+
+    fields = {}
+    for name, field in msg.__dataclass_fields__.items():
+        if 'ClassVar' in field.type:
+            continue
+        value = getattr(msg, name)
+        if '__msg__' in field.type:
+            value = to_native_class(value)
+        elif isinstance(value, list):
+            value = [to_native_class(x) for x in value]
+        elif isinstance(value, numpy.ndarray):
+            value = value.tolist()
+        fields[name] = value
+
+    return NATIVE_CLASSES[msgtype](**fields)
+
