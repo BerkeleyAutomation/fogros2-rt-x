@@ -59,7 +59,7 @@ def main(args=None):
     rclpy.init(args=args)
 
     dataset_manager = DatasetManager(
-        orchestrator=VeryBasicTopicOrchestrator(),
+        orchestrator=PerTimeIntervalTopicOrchestrator(),
         dataset_directory = "./datasets",
         observation_topics = ["/wrist_image", "/image", "/end_effector_state", "/state"],
         action_topics = ["/action"],

@@ -141,7 +141,7 @@ def get_default_value_from_tf_feature(tf_feature):
     elif isinstance(tf_feature, tfds.features.Scalar):
         return 0
     elif isinstance(tf_feature, tfds.features.Tensor):
-        return np.zeros(tf_feature.shape, dtype=tf_feature.dtype)
+        return np.zeros(tf_feature.shape, dtype=tf_feature.np_dtype)
 
 def cast_tensor_to_class_type(tensor, class_type):
     print(tensor.numpy(), tensor.numpy().shape)
@@ -162,7 +162,6 @@ def tf_tensor_data_to_ros2_attribute_data(
     Returns:
     any: The ROS attribute.
     """
-    print(type(spec_attribute), spec_attribute, ros2_type)
     if isinstance(spec_attribute, tfds.features.Image):
         bridge = CvBridge()
         converted_tensor = tensor
@@ -311,7 +310,7 @@ class FeatureSpec:
         self.ros_type = tf_feature_definition_to_ros_msg_class(tf_type)
         self.is_triggering_topic = is_triggering_topic
         self.default_value = default_value
-        if self.default_value is not None:
+        if self.default_value is None:
             self.default_value = get_default_value_from_tf_feature(
                 self.tf_type
             )
