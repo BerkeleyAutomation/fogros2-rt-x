@@ -58,8 +58,8 @@ import pprint
 from rosbags.highlevel import AnyReader
 
 import ros2_numpy
-from .dataset_spec import ros_multi_array_to_tf_dtype_map, ros_class_to_tf_dtype_map
-
+from .dataset_spec import ros_multi_array_to_tf_dtype_map, ros_class_to_tf_dtype_map, FeatureSpec
+from .conf_base import BaseDatasetConfig
 # from __future__ import annotations
 
 import importlib
@@ -169,12 +169,26 @@ class DatasetRecorder(Node):
             action_topics = [],
             step_topics = [],
     ):
+        observatio_spec = []
+        action_spec = []
+        step_spec = []
         for topic_name in observation_topics:
             print(topic_name, self.get_tf_configuration(topic_name))
+            observatio_spec.append(FeatureSpec(topic_name, self.get_tf_configuration(topic_name)))
         for topic_name in action_topics:
             print(topic_name, self.get_tf_configuration(topic_name))
+            action_spec.append(FeatureSpec(topic_name, self.get_tf_configuration(topic_name)))
         for topic_name in step_topics:
             print(topic_name, self.get_tf_configuration(topic_name))
+            step_spec.append(FeatureSpec(topic_name, self.get_tf_configuration(topic_name)))
+        
+        self.configuration = BaseDatasetConfig(
+            dataset_name="berkeley_fanuc_manipulation",
+            save_path="/home/ubuntu/open-x-embodiment/playground_ds",
+            observation_spec=observatio_spec,
+            action_spec=action_spec,
+            step_spec=step_spec,
+        )
 
 def main(args=None):
     rclpy.init(args=args)
