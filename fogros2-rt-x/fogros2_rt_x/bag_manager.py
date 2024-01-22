@@ -47,7 +47,7 @@ class BagManager:
             topic_name_in_sql = topic_name.replace("/", "_")
             msg = self.get_the_first_message_of_the_topic(self.reader, topic_name)
             topic_type = self.reader.topics[topic_name].msgtype.replace("/msg", "")
-            metadata[topic_name_in_sql + "_topic_type"] = topic_type
+            # metadata[topic_name_in_sql + "_topic_type"] = topic_type
             print( self.reader.topics[topic_name])
             metadata[topic_name_in_sql + "_num_msgs"] = self.reader.topics[topic_name].msgcount
             # metadata[topic_name + "qos"] = self.reader.topics[topic_name].qos_profile
@@ -64,9 +64,6 @@ class BagManager:
                 elif topic_type == "std_msgs/String":
                     msg = to_native_class(msg)
                     metadata[topic_name_in_sql + "_sample"] = msg.data
-                # msg = to_native_class(msg)
-                # # print(msg)
-                # metadata[topic_name_in_sql + "_sample"] = msg
                 
         return metadata
     
