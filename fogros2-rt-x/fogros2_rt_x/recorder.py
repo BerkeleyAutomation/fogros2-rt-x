@@ -36,14 +36,14 @@ from .exporter import DatasetExporter
 
 import rclpy
 from rclpy.node import Node
-from .dataset_utils import *
-from fogros2_rt_x_msgs.msg import Step, Observation, Action
+# from .dataset_utils import *
+# from fogros2_rt_x_msgs.msg import Step, Observation, Action
 import envlogger
 
-import tensorflow_datasets as tfds
-from envlogger.backends import tfds_backend_writer
-from .dataset_spec import DatasetFeatureSpec
-from .plugins.conf_base import *
+# import tensorflow_datasets as tfds
+# from envlogger.backends import tfds_backend_writer
+# from .dataset_spec import DatasetFeatureSpec
+# from .plugins.conf_base import *
 
 
 from .database_connector import SqliteConnector
@@ -51,111 +51,118 @@ from std_srvs.srv import Empty
 import random
 import pickle 
 
-class DatasetRecorder(Node):
-    """
-    A class for recording datasets in the fogros2-rt-x package.
+from pathlib import Path
+import pprint
+from rosbags.highlevel import AnyReader
 
-    This class is responsible for recording datasets based on the provided observation and action specifications.
+import ros2_numpy
+
+# from __future__ import annotations
+
+import importlib
+import numpy 
+import tensorflow as tf
+
+NATIVE_CLASSES: dict = {}
+
+def to_native_class(msg):
+    """Convert rosbags message to native message.
 
     Args:
-        None
+        msg: Rosbags message.
 
-    Attributes:
-        observation_spec (ObservationSpec): The specification for the observation.
-        action_spec (ActionSpec): The specification for the action.
-        feature_spec (DatasetFeatureSpec): The specification for the dataset features.
-        dataset_config (DatasetConfig): The configuration for the dataset.
-        last_action (Any): The last recorded action.
-        last_observation (Any): The last recorded observation.
-        last_step (Any): The last recorded step.
-        writer (TFDSBackendWriter): The writer for the dataset.
-        subscription (Subscription): The subscription for receiving step messages.
+    Returns:
+        Native message.
 
-    Methods:
-        __init__(): Initializes the DatasetRecorder object.
-        listener_callback(step_msg): Callback function for processing step messages.
     """
+    if isinstance(msg, (list)):
+        return [to_native_class(x) for x in msg]
+    msgtype: str = msg.__msgtype__
+    if msgtype not in NATIVE_CLASSES:
+        pkg, name = msgtype.rsplit('/', 1)
+        NATIVE_CLASSES[msgtype] = getattr(importlib.import_module(pkg.replace('/', '.')), name)
 
+    fields = {}
+    for name, field in msg.__dataclass_fields__.items():
+        if 'ClassVar' in field.type:
+            continue
+        value = getattr(msg, name)
+        if '__msg__' in field.type:
+            value = to_native_class(value)
+        elif isinstance(value, list):
+            value = [to_native_class(x) for x in value]
+        elif isinstance(value, numpy.ndarray):
+            value = value.tolist()
+        fields[name] = value
+
+    return NATIVE_CLASSES[msgtype](**fields)
+
+class DatasetRecorder(Node):
     def __init__(self):
         super().__init__("fogros2_rt_x_recorder")
+        observation_topics = []
+        # create reader instance and open for reading
+        self.reader = AnyReader([Path('./rosbag2_2024_01_22-02_59_18')])
+        self.reader.open()
+        self.messages = self.reader.messages(connections=self.reader.connections)
+        self.topics = self.reader.topics
 
-        self.declare_parameter("dataset_name", "berkeley_fanuc_manipulation")
-        self.dataset_name = self.get_parameter("dataset_name").value
-        self.config = get_dataset_plugin_config_from_str(self.dataset_name)
+        self.generate_tensorflow_configuration_file(
+            observation_topics = ["/wrist_image", "/image", "/end_effector_state", "/state"],
+            action_topics = ["/action"],
+            step_topics = ["/language_embedding", "/language_instruction", "/discount", "/reward"],
+        )
+
+    def get_the_first_message_of_the_topic(self, reader, topic):
+        for connection, timestamp, rawdata in reader.messages(connections=reader.connections):
+            msg = reader.deserialize(rawdata, connection.msgtype)
+            if connection.topic == topic:
+                return msg
+
+    def msg_to_numpy(self, msg, topic_type):
+        if topic_type.endswith("MultiArray"):
+            data = msg.data
+            data_type = "Float64"
+            # TODO: check if empty
+            # if len(data) == 0:
+            #     print(f"[error] empty array for {tf_feature}, fill in with zeros")
+            #     return numpy.zeros(tf_feature.shape, dtype=tf_feature.np_dtype)
+
+            # Retrieve the shape information from the MultiArrayLayout
+            original_shape = [dim.size for dim in msg.layout.dim]
+            # Convert the data into a TensorFlow tensor
+            tensor = tf.constant(data, dtype=data_type)
+
+            # Reshape the tensor to its original shape
+            reshaped_tensor = tf.reshape(tensor, original_shape)
+            # Convert the data to a numpy array and then reshape it
+            return reshaped_tensor.numpy()
+        else:
+            return ros2_numpy.numpify(msg)
+
+
+    def get_tf_configuration(self, topic_name):
+        msg = self.get_the_first_message_of_the_topic(self.reader, topic_name)
+        topic_type = self.topics[topic_name].msgtype
+        print(msg.__msgtype__)
+        msg = to_native_class(msg)
+        print(msg)
+
+        data = self.msg_to_numpy(msg, topic_type)
+
+        print(data)
+        return data
         
-        self.feature_spec = self.config.get_dataset_feature_spec()
-        self.last_action = None
-        self.last_observation = None
-        self.last_step = None
-
-        # TODO: more params
-        self.storage_backend = SqliteConnector("fogros_rt_x.db")
-        columns = {
-            "episode_id": "INTEGER",
-            "step": "BLOB",
-            "observation": "BLOB",
-            "action": "BLOB",
-            "should_export": "INTEGER"
-        }
-        self.storage_backend.create_table(table_name=self.dataset_name, columns=columns)
 
 
-        self.subscription = self.create_subscription(
-            Step, "step_info", self.listener_callback, 10
-        )
-        self.subscription  # prevent unused variable warning
-
-        self.new_episode_notification_service = self.create_service(
-            Empty,
-            "new_episode_notification_service",
-            self.new_episode_notification_service_callback,
-        )
-
-        # a random integer to identify the episode
-        self.episode_id = random.randint(0, 1000000)
-        self.step_counter = 0
-        self.record_as_new_step = True
-
-    def new_episode_notification_service_callback(self, request, response):
-        self.get_logger().info("Received new_episode_notification_service request")
-        self.episode_id = random.randint(0, 1000000)
-        self.record_as_new_step = True
-        return response
-
-    def record_step(self):
-        self.storage_backend.insert_data(
-            table_name=self.dataset_name,
-            data={
-                "episode_id": self.episode_id,
-                "step": pickle.dumps(self.last_step),
-                "observation": pickle.dumps(self.last_observation),
-                "action": pickle.dumps(self.last_action),
-                "should_export": 1,
-            },
-        )
-
-    def listener_callback(self, step_msg):
-        """
-        Callback function for processing step messages.
-
-        This function is called whenever a step message is received. It converts the step message to a step tuple,
-        records the step data, and updates the dataset writer.
-
-        Args:
-            step_msg (Step): The step message received.
-
-        Returns:
-            None
-        """
-        self.get_logger().warning(f"Received step: {str(step_msg)[:100]}")
-
-        (
-            self.last_observation,
-            self.last_action,
-            self.last_step,
-        ) = self.feature_spec.convert_ros2_msg_to_step_tuple(step_msg)
-
-        self.record_step()
+    def generate_tensorflow_configuration_file(
+            self,
+            observation_topics = [],
+            action_topics = [],
+            step_topics = [],
+    ):
+        for topic_name in observation_topics:
+            print(self.get_tf_configuration(topic_name))
 
 
 def main(args=None):
