@@ -5,13 +5,15 @@ This repository contains the code for the fogros2-rt-x project. It is designed t
 
 ### Current Workflow 
 Currently, it works as following:
-1. (User) configures what topics should be subscribed and how the topics are orchstrated 
-as observation-action pair; FogROS2-RT-X library provides helper functions and utilities to streamline the process. 
-2. FogROS2-RT-X stores the data with a private relational database locally, or on the edge, or on the cloud. By default, we use sqlite, but this can be easily adjusted. 
-3. (User) manages all the collected data through the private relational database(e.g. chooses what dataset shall be exported to public). 
-4. FogROS2-RT-X exports the dataset in standard RT-X data format. 
+1. (User) provides a series of rosbags (preferably in ROS2). We assume one rosbag contains one episode / trajactory. 
+2. FogROS2-RT-X stores the data with a private relational database locally. By default, we use sqlite, but this can be easily adjusted. 
+3. User may visualize, adjust, edit the data with the relational database (with FogROS, SQL or web interface)
+4. To export the dataset to researchers worldwide, user specifies desired observation / action topic names, and desired way of orchestrate the 
+ observation-action pair; FogROS2-RT-X library provides helper functions and utilities to streamline the process. 
+5. FogROS2-RT-X exports the dataset in standard RT-X data format and shareable with researchers worldwide. 
 
-Note that this doesn't reflect the ultimate architecture. We welcome all the archtectual suggestions to move foward. 
+* Note #1: this doesn't reflect the ultimate architecture. We welcome all the archtectual suggestions to move foward. 
+* Note #2: especially on step 3, we are interested in what our beta tester's needs. A few ideas we can think of: adding a column; fill in the values programmically without knowing how to use sql; truncating the episode; 
 
 ## Installation 
 ### Steps
@@ -99,11 +101,6 @@ ros2 run fogros2_rt_x replayer --ros-args -r dataset_name:=$DATASET_NAME
 
 #### Data Visualization and Editing 
 You may visualize the collected data in the database by querying `fogros_rt_x.db` with tools such as [sqlite-web](https://github.com/coleifer/sqlite-web). You can also replay the dataset in ROS2, and visualize with rviz or foxglove. 
-
-
-## ROS1 Support 
-
-For ROS1 support, use the [ros1bridge](https://github.com/ros2/ros1_bridge).
 
 
 ## Contributing
