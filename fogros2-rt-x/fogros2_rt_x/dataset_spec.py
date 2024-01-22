@@ -77,7 +77,6 @@ ros_multi_array_to_tf_dtype_map = {v: k for k, v in tf_tensor_dtype_to_ros_multi
 
 
 def msg_to_numpy(msg, topic_type):
-    print(topic_type)
     if topic_type in ros_multi_array_to_tf_dtype_map:
         data = msg.data
         data_type = ros_multi_array_to_tf_dtype_map[topic_type]

@@ -87,41 +87,33 @@ class BagManager:
 
         return observatio_spec, action_spec, step_spec
 
+
+    def _get_data_from_raw_data(self, rawdata, connection):
+        msg = self.reader.deserialize(rawdata, connection.msgtype)
+        msg = to_native_class(msg)
+        data = ros2_msg_data_to_tf_tensor_data(
+            msg, self.topic_name_to_tf_feature_map[connection.topic]
+        )
+        return data
+    
     def iterate_through_all_messages(self):
         for connection, timestamp, rawdata in self.reader.messages(
             connections=self.reader.connections
         ):
-            print(connection.topic)
-            print(connection)
             if connection.topic in self.observation_topics:
-                # topic_type = connection.msgtype.replace("/msg", "")
-                msg = self.reader.deserialize(rawdata, connection.msgtype)
-                msg = to_native_class(msg)
-                data = ros2_msg_data_to_tf_tensor_data(
-                    msg, self.topic_name_to_tf_feature_map[connection.topic]
-                )
+                data = self._get_data_from_raw_data(rawdata, connection)
                 print(connection.topic)
                 print(data)
                 print(timestamp)
                 print()
             if connection.topic in self.action_topics:
-                # topic_type = connection.msgtype.replace("/msg", "")
-                msg = self.reader.deserialize(rawdata, connection.msgtype)
-                msg = to_native_class(msg)
-                data = ros2_msg_data_to_tf_tensor_data(
-                    msg, self.topic_name_to_tf_feature_map[connection.topic]
-                )
+                data = self._get_data_from_raw_data(rawdata, connection)
                 print(connection.topic)
                 print(data)
                 print(timestamp)
                 print()
             if connection.topic in self.step_topics:
-                # topic_type = connection.msgtype.replace("/msg", "")
-                msg = self.reader.deserialize(rawdata, connection.msgtype)
-                msg = to_native_class(msg)
-                data = ros2_msg_data_to_tf_tensor_data(
-                    msg, self.topic_name_to_tf_feature_map[connection.topic]
-                )
+                data = self._get_data_from_raw_data(rawdata, connection)
                 print(connection.topic)
                 print(data)
                 print(timestamp)
