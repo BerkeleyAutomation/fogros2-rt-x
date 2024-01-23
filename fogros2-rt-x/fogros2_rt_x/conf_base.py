@@ -53,13 +53,11 @@ class BaseDatasetConfig:
     def __init__(
         self,
         dataset_name,
-        save_path,
         observation_spec,
         action_spec,
         step_spec,
     ):
         self.dataset_name = dataset_name
-        self.save_path = save_path
         self.observation_spec = observation_spec
         self.action_spec = action_spec
         self.step_spec = step_spec

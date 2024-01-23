@@ -184,7 +184,12 @@ class CloudBackendWriter(backend_writer.BackendWriter):
     def close(self) -> None:
         self.logger.info(f"Deleting the backend with data_dir: {self._data_directory}")
         self._write_and_reset_episode()
-        self._sequential_writer.close_all()
+        try:
+            self._sequential_writer.close_all()
+        except:
+            self.logger.info(
+                f"(Known issue) Error deleting the backend with data_dir when calling destructor"
+            )
         self.logger.info(
             f"Done deleting the backend with data_dir: {self._data_directory}"
         )

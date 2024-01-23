@@ -24,19 +24,6 @@ class DatasetManager:
         for bag_file in self.bag_files:
             self.insert_metadata_to_sql(self.metadata_dict[bag_file])
 
-    def export(self,
-        observation_topics,
-        action_topics,
-        step_topics,
-        orchestrator
-               ):
-        self.export_as_rlds(
-            observation_topics,
-            action_topics,
-            step_topics,
-            orchestrator,
-        )
-
     def create_table_from_metadata(self, metadata):
         # create table based on metadata
         # TODO: currently assume all the bag files have the same metadata
@@ -89,7 +76,7 @@ class DatasetManager:
         return bag_files
 
     def export_as_rlds(
-        self, observation_topics, action_topics, step_topics, orchestrator
+        self, observation_topics, action_topics, step_topics, orchestrator, destination
     ):
         # get all the data that should be exported as rlds
         bags = self.sql_backend.query_data_with_condition(
@@ -101,11 +88,13 @@ class DatasetManager:
         for bag in bags:
             bag_path = bag[0]
             self._export_bag_as_rlds(
-                bag_path, observation_topics, action_topics, step_topics, orchestrator
+                bag_path, observation_topics, action_topics, step_topics, orchestrator,
+                destination
             )
     
     def _export_bag_as_rlds(
-        self, bag_path, observation_topics, action_topics, step_topics, orchestrator
+        self, bag_path, observation_topics, action_topics, step_topics, orchestrator, 
+        destination
     ):
         self.bag_manager = BagManager(
             bag_path
@@ -121,15 +110,14 @@ class DatasetManager:
         )
 
         self.config = BaseDatasetConfig(
-            dataset_name="berkeley_fanuc_manipulation",
-            save_path="/home/ubuntu/open-x-embodiment/playground_ds",  # TODO: take it down
+            dataset_name=self.dataset_name,
             observation_spec=observation_spec,
             action_spec=action_spec,
             step_spec=step_spec,
         )
 
         self.writer = CloudBackendWriter(
-            data_directory="/home/ubuntu/open-x-embodiment/playground_ds",
+            data_directory=destination,
             max_episodes_per_file=1,
             ds_config=self.config.get_rlds_dataset_config(),
             logger=self.logger,

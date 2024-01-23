@@ -23,12 +23,14 @@ export FOG_WS=~/fog_ws # desired location for FogROS2 ROS2 workspace
 export ROS_DISTRO=humble
 ```
 1. Install ROS2 following the instructions on the official ROS2 website.
+
 2. Install python dependencies.
 ```
 apt-get install libgmp-dev sqlite3 ros-$ROS_DISTRO-tf-transformations ros-$ROS_DISTRO-ament-cmake-nose ros-$ROS_DISTRO-rosbag2
 pip install tensorflow envlogger[tfds] numpy transforms3d
 ```
 It's not recommended to use conda environment. It [does not work well](https://docs.ros.org/en/foxy/How-To-Guides/Using-Python-Packages.html) with ROS/ROS2.
+
 3. clone the repo
 ```
 mkdir -p $FOG_WS
@@ -70,14 +72,14 @@ with your standard ROS2 applications. We assume one rosbag-per-episode.
 
 2. Load the collected rosbags with FogROS2 with 
 ```
-ros2 fgr load --dataset_dir=./datasets --dataset_name="fogros_test"
+ros2 fgr load --dataset_dir=./datasets --dataset_name="berkeley_fanuc_manipulation"
 ```
 Here `dataset_dir` is the directory that holds the rosbags, ideally you want a directory that holds all rosbags. `dataset_name` is how you want to name the collected dataset. 
 
 #### Data Management 
 1. You may manage the collected dataset with 
 ```
-sqlite_web ./datasets/metadata.db
+sqlite_web ./metadata.db
 ```
 (TODO: streamline this)
 
@@ -89,7 +91,7 @@ You can implement your own policy of orchestrating different topics by inheritin
 
 2. Run 
 ```
-ros2 fgr export --dataset_name=$DATASET_NAME
+ros2 fgr export --dataset_name="berkeley_fanuc_manipulation"
 ```
 
 #### Replaying with existing datasets in Open-X-Embodiment

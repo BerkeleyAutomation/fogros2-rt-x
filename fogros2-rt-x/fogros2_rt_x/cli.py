@@ -82,6 +82,12 @@ class ExportVerb(VerbExtension):
             nargs="*",
             help="Location of the metadata database, by default it stores at the same location as the dataset_dir",
         )
+        parser.add_argument(
+            "--destination",
+            nargs="*",
+            help="directory of the exported dataset, can be in gs:// for google cloud storage",
+        )
+
 
     def main(self, *, args):
         if args.dataset_name is None:
@@ -95,15 +101,21 @@ class ExportVerb(VerbExtension):
                 orchestrator,
             ) = get_dataset_config_from_str(self.dataset_name)
 
+        if args.destination is None:
+            raise ValueError("destination must be specified")
+        else:
+            self.destination = args.destination[0]
+
         print("Exporting dataset: " + self.dataset_name)
         DatasetManager(
             sql_db_location="./metadata.db",
             dataset_name=self.dataset_name,
-        ).export(
+        ).export_as_rlds(
             observation_topics=observation_topics,
             action_topics=action_topics,
             step_topics=step_topics,
             orchestrator=orchestrator,
+            destination=self.destination,
         )
         print("Exporting dataset complete")
         return 0
