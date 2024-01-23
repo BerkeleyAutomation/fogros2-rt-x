@@ -38,6 +38,7 @@ from fogros2_rt_x_msgs.msg import Step, Observation, Action
 from cv_bridge import CvBridge
 from std_msgs.msg import MultiArrayLayout, MultiArrayDimension
 from sensor_msgs.msg import Image
+import ros2_numpy
 
 tf_dtype_to_ros_class_map = {
     tf.float32: "std_msgs/Float32",
@@ -54,6 +55,8 @@ tf_dtype_to_ros_class_map = {
     tf.string: "std_msgs/String",
 }
 
+ros_class_to_tf_dtype_map = {v: k for k, v in tf_dtype_to_ros_class_map.items()}
+
 tf_tensor_dtype_to_ros_multi_array_map = {
     tf.float32: "std_msgs/Float32MultiArray",
     tf.float64: "std_msgs/Float64MultiArray",
@@ -69,6 +72,32 @@ tf_tensor_dtype_to_ros_multi_array_map = {
     tf.string: "std_msgs/StringMultiArray",
 }
 
+ros_multi_array_to_tf_dtype_map = {v: k for k, v in tf_tensor_dtype_to_ros_multi_array_map.items()}
+
+
+
+def msg_to_numpy(msg, topic_type):
+    if topic_type in ros_multi_array_to_tf_dtype_map:
+        data = msg.data
+        data_type = ros_multi_array_to_tf_dtype_map[topic_type]
+        # TODO: check if empty
+        # if len(data) == 0:
+        #     print(f"[error] empty array for {tf_feature}, fill in with zeros")
+        #     return numpy.zeros(tf_feature.shape, dtype=tf_feature.np_dtype)
+
+        # Retrieve the shape information from the MultiArrayLayout
+        original_shape = [dim.size for dim in msg.layout.dim]
+        # Convert the data into a TensorFlow tensor
+        tensor = tf.constant(data, dtype=data_type)
+
+        # Reshape the tensor to its original shape
+        reshaped_tensor = tf.reshape(tensor, original_shape)
+        # Convert the data to a numpy array and then reshape it
+        return reshaped_tensor.numpy()
+    else:
+        
+        return ros2_numpy.numpify(msg)
+        
 
 def ros2_msg_data_to_tf_tensor_data(ros2_attribute, tf_feature):
     """
@@ -93,26 +122,26 @@ def ros2_msg_data_to_tf_tensor_data(ros2_attribute, tf_feature):
     elif isinstance(tf_feature, tfds.features.Scalar):
         return ros2_attribute.data
     elif isinstance(tf_feature, tfds.features.Tensor):
-        data = ros2_attribute.data
-        # check if empty
-        if len(data) == 0:
-            print(f"[error] empty array for {tf_feature}, fill in with zeros")
-            return np.zeros(tf_feature.shape, dtype=tf_feature.np_dtype)
-
-        # Retrieve the shape information from the MultiArrayLayout
-        original_shape = [dim.size for dim in ros2_attribute.layout.dim]
-        # Convert the data into a TensorFlow tensor
-        tensor = tf.constant(data, dtype=tf_feature.dtype)
-
-        # Reshape the tensor to its original shape
-        reshaped_tensor = tf.reshape(tensor, original_shape)
-        # Convert the data to a numpy array and then reshape it
-        return reshaped_tensor.numpy()
+        ros2_type = ros2_attribute.__class__.__name__
+        if ros2_type.endswith("MultiArray"):
+            # a workaround for the table querying
+            # TODO: write a function instead of hash table checking
+            ros2_type = "std_msgs/" + ros2_type 
+        return msg_to_numpy(ros2_attribute, ros2_type)
     else:
         raise NotImplementedError(
             f"feature type {type(tf_feature)} for {tf_feature} not implemented"
         )
 
+def get_default_value_from_tf_feature(tf_feature):
+    if isinstance(tf_feature, tfds.features.Image):
+        return np.zeros(tf_feature.shape, dtype=np.uint8)
+    elif isinstance(tf_feature, tfds.features.Text):
+        return ""
+    elif isinstance(tf_feature, tfds.features.Scalar):
+        return 0
+    elif isinstance(tf_feature, tfds.features.Tensor):
+        return np.zeros(tf_feature.shape, dtype=tf_feature.np_dtype)
 
 def cast_tensor_to_class_type(tensor, class_type):
     print(tensor.numpy(), tensor.numpy().shape)
@@ -133,7 +162,6 @@ def tf_tensor_data_to_ros2_attribute_data(
     Returns:
     any: The ROS attribute.
     """
-    print(type(spec_attribute), spec_attribute, ros2_type)
     if isinstance(spec_attribute, tfds.features.Image):
         bridge = CvBridge()
         converted_tensor = tensor
@@ -282,7 +310,11 @@ class FeatureSpec:
         self.ros_type = tf_feature_definition_to_ros_msg_class(tf_type)
         self.is_triggering_topic = is_triggering_topic
         self.default_value = default_value
-
+        if self.default_value is None:
+            self.default_value = get_default_value_from_tf_feature(
+                self.tf_type
+            )
+        
     def convert_tf_tensor_data_to_ros2_msg(self, tensor_data):
         """
         This function converts TensorFlow tensors to ROS (Robot Operating System) message attributes.
@@ -483,6 +515,18 @@ class DatasetFeatureSpec:
             ]
         )
 
+def feature_spec_list_to_default_value_dict(feature_spec_list):
+    """
+    Converts a list of feature specifications to a dictionary of default values.
+
+    Args:
+        feature_spec_list (list): The list of feature specifications.
+
+    Returns:
+        dict: The dictionary of default values.
+    """
+
+    return {spec.tf_name: spec.default_value for spec in feature_spec_list}
 
 # def cast_tensor_to_class_type(tensor, class_type):
 #     return class_type(tensor.numpy())

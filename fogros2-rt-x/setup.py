@@ -48,15 +48,13 @@ setup(
     entry_points={
         "console_scripts": [
             "replayer = fogros2_rt_x.replayer:main",
-            "recorder = fogros2_rt_x.recorder:main",
-            "orchestrator = fogros2_rt_x.orchestrator:main",
         ],
         "ros2cli.command": [
             "fgr = fogros2_rt_x.cli:FogCommand",
         ],
         "fogros2_rt_x.verb": [
-            "config = fogros2_rt_x.cli:ConfigVerb",
             "export = fogros2_rt_x.cli:ExportVerb",
+            "load = fogros2_rt_x.cli:LoadVerb",
         ],
     },
 )

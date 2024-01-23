@@ -3,18 +3,30 @@
 
 This repository contains the code for the fogros2-rt-x project. It is designed to work with ROS and TensorFlow for data collection. Note that this is a very early prototype that hacked within a week. Please submit any issues/bugs through github issues. Also checkout https://github.com/KeplerC/fogros2-rt-x/issues/1 for known issues and upcoming features. 
 
+### Current Workflow 
+Currently, it works as following:
+1. (User) provides a series of rosbags (preferably in ROS2). We assume one rosbag contains one episode / trajactory. 
+2. FogROS2-RT-X stores the data with a private relational database locally. By default, we use sqlite, but this can be easily adjusted. 
+3. User may visualize, adjust, edit the data with the relational database (with FogROS, SQL or web interface)
+4. To export the dataset to researchers worldwide, user specifies desired observation / action topic names, and desired way of orchestrate the 
+ observation-action pair; FogROS2-RT-X library provides helper functions and utilities to streamline the process. 
+5. FogROS2-RT-X exports the dataset in standard RT-X data format and shareable with researchers worldwide. 
+
+* Note #1: this doesn't reflect the ultimate architecture. We welcome all the archtectual suggestions to move foward. 
+* Note #2: especially on step 3, we are interested in what our beta tester's needs. A few ideas we can think of: adding a column; fill in the values programmically without knowing how to use sql; truncating the episode; 
+
 ## Installation 
 ### Steps
 0. Setting environment variables
 ```
 export FOG_WS=~/fog_ws # desired location for FogROS2 ROS2 workspace
-export DATASET_NAME=fogros_rt_x_example # name of the dataset
+export ROS_DISTRO=humble
 ```
 1. Install ROS2 following the instructions on the official ROS2 website.
 2. Install python dependencies.
 ```
-apt-get install libgmp-dev sqlite3 
-pip install google-cloud-bigquery tensorflow envlogger[tfds] numpy
+apt-get install libgmp-dev sqlite3 ros-$ROS_DISTRO-tf-transformations ros-$ROS_DISTRO-ament-cmake-nose ros-$ROS_DISTRO-rosbag2
+pip install tensorflow envlogger[tfds] numpy transforms3d
 ```
 It's not recommended to use conda environment. It [does not work well](https://docs.ros.org/en/foxy/How-To-Guides/Using-Python-Packages.html) with ROS/ROS2.
 3. clone the repo
@@ -22,28 +34,15 @@ It's not recommended to use conda environment. It [does not work well](https://d
 mkdir -p $FOG_WS
 cd $FOG_WS
 git clone https://github.com/KeplerC/fogros2-rt-x.git
-```
-4. Copy and edit the [configuration File](./fogros2-rt-x/fogros2_rt_x/plugins/$DATASET_NAME.py) for your own dataset.
-For example,
-```
-cp $FOG_WS/fogros2-rt-x/fogros2_rt_x/plugins/template.py $FOG_WS/fogros2-rt-x/fogros2_rt_x/plugins/$DATASET_NAME.py 
+git clone https://github.com/Box-Robotics/ros2_numpy
 ```
 
-7. Compile the repo
+4. Compile the repo
 ```
 cd $FOG_WS
 colcon build
 source install/setup.bash
 ```
-
-8. Generate ROS2 message files for the tensorflow dataset types and re-compile the repo
-```
-ros2 fgr config --dataset=$DATASET_NAME
-colcon build
-```
-Note that `DATASET_NAME` should match the file name under `plugins` directory. 
-
-9. Setup google cloud with Google Cloud Setup instructions (see below)
 
 #### Google Cloud Setup
 
@@ -57,27 +56,41 @@ sudo apt-get update && sudo apt-get install google-cloud-cli
     ```
     gcloud auth login
     ```
-3. (To be Automated) Create a Google Storage bucket through the Google Cloud Console and update the bucket name to your configuration file.
 
-## Usage 
-#### Dataset Collector
-Run dataset generator (stores ROS2 message as RLDS format) with the following instructions
-```
-source install/setup.bash
-ros2 launch fogros2_rt_x data_collector.py
-```
-This saves all the collected data through a local sqlite file `fogros_rt_x.db`
 
-#### Uploader
-The following instruction converts all the episode data that `should_export=1` in the database. 
+### Using FogROS2-RT-X 
+
+#### Data Collection 
+
+1. Collect data with standard [rosbag](https://wiki.ros.org/rosbag)/[ros2bag](https://github.com/ros2/rosbag2). For example, if you want to record all topics, simply run 
+```
+ros2 bag record -a
+```
+with your standard ROS2 applications. We assume one rosbag-per-episode.
+
+2. Load the collected rosbags with FogROS2 with 
+```
+ros2 fgr load --dataset_dir=./datasets --dataset_name="fogros_test"
+```
+Here `dataset_dir` is the directory that holds the rosbags, ideally you want a directory that holds all rosbags. `dataset_name` is how you want to name the collected dataset. 
+
+#### Data Management 
+1. You may manage the collected dataset with 
+```
+sqlite_web ./datasets/metadata.db
+```
+(TODO: streamline this)
+
+#### Data Sharing 
+1. To share the data,  first specify the desired observation / action topic names, and desired way of orchestrate the topics by editing the export.py. Currently, FogROS2-RT-X creates a `step` based on given period of time through `PerPeriodTopicOrchestrator`. 
+Implementation can be found in [orchestrator_base.py](./fogros2-rt-x/fogros2_rt_x/plugins/orchestrator_base.py). 
+You can implement your own policy of orchestrating different topics by inheriting the base class. 
+
+
+2. Run 
 ```
 ros2 fgr export --dataset_name=$DATASET_NAME
 ```
-
-#### (Optional) Customize Data Collection Policy
-Currently, FogROS2-RT-X creates a `step` based on given period of time through `PerPeriodTopicOrchestrator`. 
-Implementation can be found in [orchestrator_base.py](./fogros2-rt-x/fogros2_rt_x/plugins/orchestrator_base.py). 
-You can implement your own policy of orchestrating different topics by inheriting the base class. 
 
 #### Replaying with existing datasets in Open-X-Embodiment
 You can replay existing datasets in ROS2 with 
@@ -86,15 +99,6 @@ source install/setup.bash
 ros2 run fogros2_rt_x replayer --ros-args -r dataset_name:=$DATASET_NAME 
 # replace with yours, e.g. berkeley_fanuc_manipulation
 ```
-
-#### Data Visualization and Editing 
-You may visualize the collected data in the database by querying `fogros_rt_x.db` with tools such as [sqlite-web](https://github.com/coleifer/sqlite-web). You can also replay the dataset in ROS2, and visualize with rviz or foxglove. 
-
-
-## ROS1 Support 
-
-For ROS1 support, use the [ros1bridge](https://github.com/ros2/ros1_bridge).
-
 
 ## Contributing
 

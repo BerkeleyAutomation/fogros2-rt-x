@@ -1,4 +1,0 @@
-sensor_msgs/Image wrist_image
-sensor_msgs/Image image
-std_msgs/Float32MultiArray end_effector_state
-std_msgs/Float32MultiArray state

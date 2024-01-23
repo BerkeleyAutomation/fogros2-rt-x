@@ -131,7 +131,7 @@ def get_dataset_info(datasets):
     return ret
 
 
-def get_dataset_plugin_config_from_str(dataset_str):
+def get_dataset_config_from_str(dataset_str):
     # check if dataset exists from importlib
     try:
         module = importlib.import_module("fogros2_rt_x.plugins." + dataset_str)
@@ -143,7 +143,11 @@ def get_dataset_plugin_config_from_str(dataset_str):
         )
 
     try:
-        return getattr(module, "GET_CONFIG")()
+        observation_topics = getattr(module, "observation_topics")
+        action_topics = getattr(module, "action_topics")
+        step_topics = getattr(module, "step_topics")
+        orchestrator = getattr(module, "orchestrator")
+        return observation_topics, action_topics, step_topics, orchestrator
     except AttributeError:
         raise ValueError(
             "Dataset configuration {} does not have GET_CONFIG function. Please check if it's implemented.".format(
@@ -152,21 +156,39 @@ def get_dataset_plugin_config_from_str(dataset_str):
         )
 
 
-def get_orchestrator_from_str(dataset_str):
-    try:
-        module = importlib.import_module("fogros2_rt_x.plugins." + dataset_str)
-    except ModuleNotFoundError:
-        raise ValueError(
-            "Dataset configuration {} not found. Please check if the dataset name is correct.".format(
-                dataset_str
-            )
-        )
+import importlib
+import numpy 
+NATIVE_CLASSES: dict = {}
 
-    try:
-        return getattr(module, "GET_ORCHESTRATOR")()
-    except AttributeError:
-        raise ValueError(
-            "Dataset configuration {} does not have GET_ORCHESTRATOR function. Please check if it's implemented.".format(
-                dataset_str
-            )
-        )
+def to_native_class(msg):
+    """Convert rosbags message to native message.
+
+    Args:
+        msg: Rosbags message.
+
+    Returns:
+        Native message.
+
+    """
+    if isinstance(msg, (list)):
+        return [to_native_class(x) for x in msg]
+    msgtype: str = msg.__msgtype__
+    if msgtype not in NATIVE_CLASSES:
+        pkg, name = msgtype.rsplit('/', 1)
+        NATIVE_CLASSES[msgtype] = getattr(importlib.import_module(pkg.replace('/', '.')), name)
+
+    fields = {}
+    for name, field in msg.__dataclass_fields__.items():
+        if 'ClassVar' in field.type:
+            continue
+        value = getattr(msg, name)
+        if '__msg__' in field.type:
+            value = to_native_class(value)
+        elif isinstance(value, list):
+            value = [to_native_class(x) for x in value]
+        elif isinstance(value, numpy.ndarray):
+            value = value.tolist()
+        fields[name] = value
+
+    return NATIVE_CLASSES[msgtype](**fields)
+
