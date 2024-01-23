@@ -5,23 +5,30 @@ from .conf_base import *
 from .dataset_spec import feature_spec_list_to_default_value_dict
 import os
 from .database_connector import SqliteConnector
-
+from .plugins.orchestrator_base import *
 
 class DatasetManager:
     def __init__(
-        self, dataset_directory, sql_db_location, dataset_name_in_sql="test_fogros"
+        self, dataset_directory, sql_db_location, dataset_name="test_fogros"
     ):
         self.logger = logging.getLogger(__name__)
         self.dataset_directory = dataset_directory
         self.sql_backend = SqliteConnector(sql_db_location)
         self.bag_files = self.get_all_bag_files(self.dataset_directory)
-        self.dataset_name_in_sql = dataset_name_in_sql
+        self.dataset_name = dataset_name
 
         self.metadata_dict = self.get_all_bag_metadata()
 
         self.create_table_from_metadata(self.metadata_dict[self.bag_files[0]])
         for bag_file in self.bag_files:
             self.insert_metadata_to_sql(self.metadata_dict[bag_file])
+
+        self.export_as_rlds(
+            observation_topics = ["/wrist_image", "/image", "/end_effector_state", "/state"],
+            action_topics = ["/action"],
+            step_topics = ["/language_embedding", "/language_instruction", "/discount", "/reward"],
+            orchestrator=PerTimeIntervalTopicOrchestrator(),
+        )
 
     def create_table_from_metadata(self, metadata):
         # create table based on metadata
@@ -42,14 +49,14 @@ class DatasetManager:
         columns["should_export_as_rlds"] = "INTEGER"
         print(columns)
         self.sql_backend.create_table(
-            table_name=self.dataset_name_in_sql, columns=columns
+            table_name=self.dataset_name, columns=columns
         )
 
     def insert_metadata_to_sql(self, metadata):
         # by default all the data should be exported as rlds
         metadata["should_export_as_rlds"] = 1
         # insert metadata to sql
-        self.sql_backend.insert_data(table_name=self.dataset_name_in_sql, data=metadata)
+        self.sql_backend.insert_data(table_name=self.dataset_name, data=metadata)
 
     def get_metadata_from_bag_file(self, bag_file):
         bag_manager = BagManager(bag_file)
@@ -74,11 +81,27 @@ class DatasetManager:
 
         return bag_files
 
-    def for_exporter(
+    def export_as_rlds(
         self, observation_topics, action_topics, step_topics, orchestrator
     ):
+        # get all the data that should be exported as rlds
+        bags = self.sql_backend.query_data_with_condition(
+            table_name=self.dataset_name,
+            columns=["bag_path"],
+            conditions={"should_export_as_rlds": 1},
+            use_or = True,
+        )
+        for bag in bags:
+            bag_path = bag[0]
+            self._export_bag_as_rlds(
+                bag_path, observation_topics, action_topics, step_topics, orchestrator
+            )
+    
+    def _export_bag_as_rlds(
+        self, bag_path, observation_topics, action_topics, step_topics, orchestrator
+    ):
         self.bag_manager = BagManager(
-            orchestrator,
+            bag_path
         )
         (
             observation_spec,
@@ -105,12 +128,17 @@ class DatasetManager:
             logger=self.logger,
             metadata_database=None,
         )
-        self.orchestrator.set_writer(self.writer)
+        orchestrator.set_writer(self.writer)
 
-        self.orchestrator.set_default_values(
+        orchestrator.set_default_values(
             feature_spec_list_to_default_value_dict(observation_spec),
             feature_spec_list_to_default_value_dict(action_spec),
             feature_spec_list_to_default_value_dict(step_spec),
         )
 
-        self.bag_manager.iterate_through_all_messages()
+        self.bag_manager.iterate_through_all_messages(
+            orchestrator,
+            observation_topics,
+            action_topics,
+            step_topics,
+        )

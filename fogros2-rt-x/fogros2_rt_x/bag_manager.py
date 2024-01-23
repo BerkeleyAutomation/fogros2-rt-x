@@ -138,6 +138,7 @@ class BagManager:
     
     def iterate_through_all_messages(
             self, 
+            orchestrator,
             observation_topics,
             action_topics,
             step_topics,
@@ -145,16 +146,16 @@ class BagManager:
         for connection, timestamp, rawdata in self.reader.messages(
             connections=self.reader.connections
         ):
-            self.orchestrator.on_timestamp(timestamp, connection.topic)
+            orchestrator.on_timestamp(timestamp, connection.topic)
             if connection.topic in observation_topics:
                 data = self._get_data_from_raw_data(rawdata, connection)
-                self.orchestrator.on_observation_topic(connection.topic, data)
+                orchestrator.on_observation_topic(connection.topic, data)
                 
             if connection.topic in action_topics:
                 data = self._get_data_from_raw_data(rawdata, connection)
-                self.orchestrator.on_action_topic(connection.topic, data)
+                orchestrator.on_action_topic(connection.topic, data)
 
             if connection.topic in step_topics:
                 data = self._get_data_from_raw_data(rawdata, connection)
-                self.orchestrator.on_step_topic(connection.topic, data)
+                orchestrator.on_step_topic(connection.topic, data)
 
