@@ -41,6 +41,7 @@ from .plugins.conf_base import *
 from .dataset_utils import *
 from .dataset_manager import DatasetManager
 
+
 class FogCommand(CommandExtension):
     """Base 'fog' command ROS 2 CLI extension."""
 
@@ -76,21 +77,38 @@ class ExportVerb(VerbExtension):
             nargs="*",
             help="Name of the dataset, error when not specified, need to match the name in ./fogros2_rt_x/plugins",
         )
+        parser.add_argument(
+            "--metadata_db_location",
+            nargs="*",
+            help="Location of the metadata database, by default it stores at the same location as the dataset_dir",
+        )
 
     def main(self, *, args):
-
         if args.dataset_name is None:
             raise ValueError("dataset_name must be specified")
         else:
             self.dataset_name = args.dataset_name[0]
-            self.config = get_dataset_plugin_config_from_str(self.dataset_name)
+            (
+                observation_topics,
+                action_topics,
+                step_topics,
+                orchestrator,
+            ) = get_dataset_config_from_str(self.dataset_name)
 
         print("Exporting dataset: " + self.dataset_name)
-        self.exporter = DatasetExporter(self.config)
-        self.exporter.execute()
+        DatasetManager(
+            sql_db_location="./metadata.db",
+            dataset_name=self.dataset_name,
+        ).export(
+            observation_topics=observation_topics,
+            action_topics=action_topics,
+            step_topics=step_topics,
+            orchestrator=orchestrator,
+        )
         print("Exporting dataset complete")
         return 0
-    
+
+
 class LoadVerb(VerbExtension):
     def add_arguments(self, parser, cli_name):
         parser.add_argument(
@@ -106,9 +124,8 @@ class LoadVerb(VerbExtension):
         parser.add_argument(
             "--metadata_db_location",
             nargs="*",
-            help="Location of the metadata database, by default it stores at the same location as the dataset_dir",
+            help="Location of the metadata database, by default it stores at the current directory",
         )
-
 
     def main(self, *, args):
         if args.dataset_dir is None:
@@ -117,7 +134,7 @@ class LoadVerb(VerbExtension):
             self.dataset_dir = args.dataset_dir[0]
 
         if args.metadata_db_location is None:
-            self.metadata_db_location = os.path.join(self.dataset_dir, "metadata.db")
+            self.metadata_db_location = "./metadata.db"
         else:
             self.metadata_db_location = args.metadata_db_location[0]
 
@@ -129,11 +146,9 @@ class LoadVerb(VerbExtension):
         print("Loading dataset: " + self.dataset_dir)
         print("Storing metadata in : " + self.metadata_db_location)
 
-
         DatasetManager(
-            dataset_directory = self.dataset_dir,
-            sql_db_location = self.metadata_db_location,
-            dataset_name = self.dataset_name,
-        ).load()
-
+            sql_db_location=self.metadata_db_location,
+            dataset_name=self.dataset_name,
+        ).load(dataset_directory=self.dataset_dir)
+        print("Loading succeeds")
         return 0
