@@ -34,6 +34,7 @@ It's not recommended to use conda environment. It [does not work well](https://d
 mkdir -p $FOG_WS
 cd $FOG_WS
 git clone https://github.com/KeplerC/fogros2-rt-x.git
+git clone https://github.com/Box-Robotics/ros2_numpy
 ```
 
 4. Compile the repo

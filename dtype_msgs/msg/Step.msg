@@ -1,6 +1,0 @@
-std_msgs/Float64 reward
-std_msgs/Float64 discount
-std_msgs/Float32MultiArray language_embedding
-std_msgs/String language_instruction
-Action action 
-Observation observation

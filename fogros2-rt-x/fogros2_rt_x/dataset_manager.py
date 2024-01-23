@@ -5,7 +5,7 @@ from .conf_base import *
 from .dataset_spec import feature_spec_list_to_default_value_dict
 import os
 from .database_connector import SqliteConnector
-from .plugins.orchestrator_base import *
+from .plugins.orchestrator_examples import *
 
 class DatasetManager:
     def __init__(
