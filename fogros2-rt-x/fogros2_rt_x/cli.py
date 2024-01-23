@@ -134,6 +134,6 @@ class LoadVerb(VerbExtension):
             dataset_directory = self.dataset_dir,
             sql_db_location = self.metadata_db_location,
             dataset_name = self.dataset_name,
-        )
+        ).load()
 
         return 0

@@ -53,8 +53,6 @@ setup(
             "fgr = fogros2_rt_x.cli:FogCommand",
         ],
         "fogros2_rt_x.verb": [
-            "config = fogros2_rt_x.cli:ConfigVerb",
-            "export = fogros2_rt_x.cli:ExportVerb",
             "load = fogros2_rt_x.cli:LoadVerb",
         ],
     },

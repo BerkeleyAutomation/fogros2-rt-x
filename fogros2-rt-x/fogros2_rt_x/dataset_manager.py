@@ -17,12 +17,14 @@ class DatasetManager:
         self.bag_files = self.get_all_bag_files(self.dataset_directory)
         self.dataset_name = dataset_name
 
+    def load(self):
         self.metadata_dict = self.get_all_bag_metadata()
 
         self.create_table_from_metadata(self.metadata_dict[self.bag_files[0]])
         for bag_file in self.bag_files:
             self.insert_metadata_to_sql(self.metadata_dict[bag_file])
 
+    def export(self):
         self.export_as_rlds(
             observation_topics = ["/wrist_image", "/image", "/end_effector_state", "/state"],
             action_topics = ["/action"],
