@@ -39,7 +39,7 @@ import os
 from .dataset_spec import DatasetFeatureSpec
 from .plugins.conf_base import *
 from .dataset_utils import *
-
+from .dataset_manager import DatasetManager
 
 class FogCommand(CommandExtension):
     """Base 'fog' command ROS 2 CLI extension."""
@@ -69,105 +69,6 @@ class FogCommand(CommandExtension):
         return extension.main(args=args)
 
 
-action_and_observation_str = """
-Action action 
-Observation observation"""
-
-
-class ConfigVerb(VerbExtension):
-    def add_arguments(self, parser, cli_name):
-        parser.add_argument(
-            "--msg_path",
-            nargs="*",
-            help="Path to ROS2 message repo, default is to use the colcon workspace path",
-        )
-        parser.add_argument(
-            "--dataset_name",
-            nargs="*",
-            help="Name of the dataset, error when not specified, need to match the name in ./fogros2_rt_x/plugins",
-        )
-
-    def generate_ros_config(self):
-        self.feature_spec = self.config.get_dataset_feature_spec()
-        self.observation_spec = self.feature_spec.observation_spec
-        self.action_spec = self.feature_spec.action_spec
-        self.step_spec = self.feature_spec.step_spec
-
-        # observation spec
-        print("=== observation spec ===")
-        print(
-            self.feature_spec.feature_spec_list_to_ros2_msg_definition(
-                self.observation_spec
-            )
-        )
-        with open(self.msg_path + "/Observation.msg", "w") as f:
-            f.write(
-                self.feature_spec.feature_spec_list_to_ros2_msg_definition(
-                    self.observation_spec
-                )
-            )
-        print("=== action spec ===")
-        print(
-            self.feature_spec.feature_spec_list_to_ros2_msg_definition(self.action_spec)
-        )
-        with open(self.msg_path + "/Action.msg", "w") as f:
-            f.write(
-                self.feature_spec.feature_spec_list_to_ros2_msg_definition(
-                    self.action_spec
-                )
-            )
-        print("=== step spec ===")
-        print(
-            self.feature_spec.feature_spec_list_to_ros2_msg_definition(self.step_spec)
-        )
-
-        with open(self.msg_path + "/Step.msg", "w") as f:
-            f.write(
-                self.feature_spec.feature_spec_list_to_ros2_msg_definition(
-                    self.step_spec
-                )
-            )
-            f.write(action_and_observation_str)
-
-    def main(self, *, args):
-        """Handle config verb."""
-        if args.msg_path is None:
-            # get colcon workspace path
-            ws_path = os.environ["COLCON_PREFIX_PATH"]
-            msg_repo_path = ws_path + "/../fogros2-rt-x/dtype_msgs"
-            msg_repo_path_src = ws_path + "/../src/fogros2-rt-x/dtype_msgs"
-            # get path to fogros2-rt-x message repo
-            if os.path.exists(msg_repo_path):
-                self.msg_path = msg_repo_path
-            elif os.path.exists(msg_repo_path_src):
-                self.msg_path = msg_repo_path_src
-            else:
-                raise ValueError(
-                    "default msg_path not found, checked "
-                    + msg_repo_path
-                    + " and "
-                    + msg_repo_path_src
-                    + " please specify --msg_path"
-                )
-        else:
-            if args.msg_path[0] != "/":
-                raise ValueError("msg_path must be an absolute path")
-            self.msg_path = args.msg_path
-
-        # append msg to path for the actual messages
-        self.msg_path = self.msg_path + "/msg/"
-
-        if args.dataset_name is None:
-            raise ValueError("dataset_name must be specified")
-        else:
-            self.dataset_name = args.dataset_name[0]
-            self.config = get_dataset_plugin_config_from_str(self.dataset_name)
-
-        print("Writing Configuration to ROS2 message directory path: " + self.msg_path)
-
-        self.generate_ros_config()
-        return 0
-
 class ExportVerb(VerbExtension):
     def add_arguments(self, parser, cli_name):
         parser.add_argument(
@@ -188,4 +89,51 @@ class ExportVerb(VerbExtension):
         self.exporter = DatasetExporter(self.config)
         self.exporter.execute()
         print("Exporting dataset complete")
+        return 0
+    
+class LoadVerb(VerbExtension):
+    def add_arguments(self, parser, cli_name):
+        parser.add_argument(
+            "--dataset_dir",
+            nargs="*",
+            help="Directory of the dataset, error when not specified",
+        )
+        parser.add_argument(
+            "--dataset_name",
+            nargs="*",
+            help="Name of the dataset, error when not specified",
+        )
+        parser.add_argument(
+            "--metadata_db_location",
+            nargs="*",
+            help="Location of the metadata database, by default it stores at the same location as the dataset_dir",
+        )
+
+
+    def main(self, *, args):
+        if args.dataset_dir is None:
+            raise ValueError("dataset_dir must be specified")
+        else:
+            self.dataset_dir = args.dataset_dir[0]
+
+        if args.metadata_db_location is None:
+            self.metadata_db_location = os.path.join(self.dataset_dir, "metadata.db")
+        else:
+            self.metadata_db_location = args.metadata_db_location[0]
+
+        if args.dataset_name is None:
+            raise ValueError("dataset_name must be specified")
+        else:
+            self.dataset_name = args.dataset_name[0]
+
+        print("Loading dataset: " + self.dataset_dir)
+        print("Storing metadata in : " + self.metadata_db_location)
+
+
+        DatasetManager(
+            dataset_directory = self.dataset_dir,
+            sql_db_location = self.metadata_db_location,
+            dataset_name = self.dataset_name,
+        )
+
         return 0
