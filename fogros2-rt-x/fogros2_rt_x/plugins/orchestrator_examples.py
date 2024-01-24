@@ -18,6 +18,22 @@ class StressTestTopicOrchestrator(BaseTopicOrchestrator):
 
 
 class PerTimeIntervalTopicOrchestrator(BaseTopicOrchestrator):
+    """
+    Orchestrator that triggers new steps and episodes based on time intervals.
+
+    Args:
+        per_step_interval (float): Time interval in seconds between each step.
+        per_episode_interval (float): Time interval in seconds between each episode.
+        reward (float): Reward value for each step.
+        discount (float): Discount factor for future rewards.
+
+    Attributes:
+        last_timestamp (float): Timestamp of the last received message.
+        last_episode_timestamp (float): Timestamp of the last episode.
+        per_step_interval (float): Time interval in nanoseconds between each step.
+        per_episode_interval (float): Time interval in nanoseconds between each episode.
+    """
+
     def __init__(
         self, per_step_interval=0.1,  # seconds
         per_episode_interval=1.0, # seconds

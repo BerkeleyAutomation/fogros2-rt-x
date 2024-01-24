@@ -17,10 +17,37 @@ from .conf_base import *
 
 
 class BagManager:
+    """
+    Class for managing ROS bag files.
+
+    Args:
+        bag_path (str): The path to the bag file.
+
+    Attributes:
+        bag_path (str): The path to the bag file.
+        reader (AnyReader): The reader instance for reading the bag file.
+        topic_name_to_tf_feature_map (dict): A dictionary mapping topic names to TensorFlow feature configurations.
+
+    Methods:
+        get_metadata: Get the metadata of the bag file.
+        get_the_first_message_of_the_topic: Get the first message of a specific topic.
+        get_tf_configuration: Get the TensorFlow configuration for a specific topic.
+        generate_tensorflow_configuration_file: Generate a TensorFlow configuration file based on the specified topics.
+        _get_data_from_raw_data: Get the data from raw data and convert it to TensorFlow tensor data.
+        iterate_through_all_messages: Iterate through all messages in the bag file.
+
+    """
+
     def __init__(
             self, bag_path
             ):
+        """
+        Initialize the BagManager.
 
+        Args:
+            bag_path (str): The path to the bag file.
+
+        """
         self.bag_path = bag_path
         # create reader instance and open for reading
         self.reader = AnyReader([Path(bag_path)])
@@ -29,11 +56,20 @@ class BagManager:
         self.topic_name_to_tf_feature_map = {}
 
     def __del__(self):
-        # self.orchestrator._new_episode()
+        """
+        Clean up resources when the BagManager is deleted.
+
+        """
         self.reader.close()
 
     def get_metadata(self):
-        
+        """
+        Get the metadata of the bag file.
+
+        Returns:
+            dict: A dictionary containing the metadata of the bag file.
+
+        """
         metadata = {}
         metadata["bag_path"] = self.bag_path
         metadata["duraction"] = self.reader.duration
@@ -68,6 +104,17 @@ class BagManager:
         return metadata
     
     def get_the_first_message_of_the_topic(self, reader, topic):
+        """
+        Get the first message of a specific topic.
+
+        Args:
+            reader (AnyReader): The reader instance for reading the bag file.
+            topic (str): The name of the topic.
+
+        Returns:
+            Any: The first message of the topic.
+
+        """
         for connection, timestamp, rawdata in reader.messages(
             connections=reader.connections
         ):
@@ -76,6 +123,16 @@ class BagManager:
                 return msg
 
     def get_tf_configuration(self, topic_name):
+        """
+        Get the TensorFlow configuration for a specific topic.
+
+        Args:
+            topic_name (str): The name of the topic.
+
+        Returns:
+            TensorFlowFeature: The TensorFlow feature configuration for the topic.
+
+        """
         msg = self.get_the_first_message_of_the_topic(self.reader, topic_name)
         topic_type = self.reader.topics[topic_name].msgtype.replace("/msg", "")
 
@@ -109,6 +166,18 @@ class BagManager:
         action_topics,
         step_topics,
     ):
+        """
+        Generate a TensorFlow configuration file based on the specified topics.
+
+        Args:
+            observation_topics (list): A list of observation topics.
+            action_topics (list): A list of action topics.
+            step_topics (list): A list of step topics.
+
+        Returns:
+            tuple: A tuple containing the observation spec, action spec, and step spec.
+
+        """
         observatio_spec = []
         action_spec = []
         step_spec = []
@@ -129,6 +198,17 @@ class BagManager:
 
 
     def _get_data_from_raw_data(self, rawdata, connection):
+        """
+        Get the data from raw data and convert it to TensorFlow tensor data.
+
+        Args:
+            rawdata (bytes): The raw data.
+            connection (Connection): The connection object.
+
+        Returns:
+            TensorFlow tensor data: The converted TensorFlow tensor data.
+
+        """
         msg = self.reader.deserialize(rawdata, connection.msgtype)
         msg = to_native_class(msg)
         data = ros2_msg_data_to_tf_tensor_data(
@@ -143,6 +223,16 @@ class BagManager:
             action_topics,
             step_topics,
         ):
+        """
+        Iterate through all messages in the bag file.
+
+        Args:
+            orchestrator (Orchestrator): The orchestrator object.
+            observation_topics (list): A list of observation topics.
+            action_topics (list): A list of action topics.
+            step_topics (list): A list of step topics.
+
+        """
         for connection, timestamp, rawdata in self.reader.messages(
             connections=self.reader.connections
         ):
