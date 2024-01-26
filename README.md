@@ -46,7 +46,7 @@ colcon build
 source install/setup.bash
 ```
 
-#### Google Cloud Setup
+#### Google Cloud Setup (Optional)
 
 1. Install google cloud command line tools with the following link: [Google Cloud SDK](https://cloud.google.com/sdk/docs/install#deb)
 ```
