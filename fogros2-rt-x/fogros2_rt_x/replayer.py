@@ -93,7 +93,7 @@ class DatasetReplayer(Node):
             self.topic_name_to_publisher_dict = dict()
             self.topic_name_to_recorder_dict = dict()
             self.init_publisher_separate_topics()
-            # self.init_recorder_separate_topics()
+            self.init_recorder_separate_topics()
         # elif replay_type == "as_single_topic":
         #     self.init_publisher_single_topic()
         # elif replay_type == "both":
@@ -166,7 +166,7 @@ class DatasetReplayer(Node):
                 
                 self.topic_name_to_publisher_dict[topic.ros_topic_name].publish(msg)
             
-            # self.check_last_step_update_recorder(step)
+            self.check_last_step_update_recorder(step)
             time.sleep(self.per_step_interval)
 
         self.episode = next(iter(self.dataset))
