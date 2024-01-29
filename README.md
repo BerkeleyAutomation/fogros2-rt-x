@@ -27,7 +27,7 @@ export ROS_DISTRO=humble
 2. Install python dependencies.
 ```
 apt-get install libgmp-dev sqlite3 ros-$ROS_DISTRO-tf-transformations ros-$ROS_DISTRO-ament-cmake-nose ros-$ROS_DISTRO-rosbag2
-pip install tensorflow envlogger[tfds] numpy transforms3d
+pip install imageio tensorflow envlogger[tfds] numpy transforms3d
 ```
 It's not recommended to use conda environment. It [does not work well](https://docs.ros.org/en/foxy/How-To-Guides/Using-Python-Packages.html) with ROS/ROS2.
 

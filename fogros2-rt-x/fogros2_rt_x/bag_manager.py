@@ -13,8 +13,9 @@ from .dataset_spec import (
 )
 from .dataset_utils import to_native_class
 from .conf_base import *
-
-
+import cv2 
+import numpy as np
+import imageio
 
 class BagManager:
     """
@@ -81,28 +82,48 @@ class BagManager:
         # TODO: later generate a gif 
         for topic_name in self.reader.topics:
             topic_name_in_sql = topic_name.replace("/", "_")
-            msg = self.get_the_first_message_of_the_topic(self.reader, topic_name)
+            
             topic_type = self.reader.topics[topic_name].msgtype.replace("/msg", "")
-            # metadata[topic_name_in_sql + "_topic_type"] = topic_type
-            print( self.reader.topics[topic_name])
+            print(self.reader.topics[topic_name])
             metadata[topic_name_in_sql + "_num_msgs"] = self.reader.topics[topic_name].msgcount
-            # metadata[topic_name + "qos"] = self.reader.topics[topic_name].qos_profile
-            if msg is not None:
-                if topic_type == "sensor_msgs/Image":
-                    # save the image as local file 
-                    msg = to_native_class(msg)
-                    import cv2 
-                    import numpy as np
-                    data = msg_to_numpy(msg, topic_type)
-                    path = "/tmp/test" + topic_name_in_sql + self.bag_path.replace("/", "") + ".png"
-                    cv2.imwrite(path, data)
-                    metadata[topic_name_in_sql + "_sample"] = path
-                elif topic_type == "std_msgs/String":
-                    msg = to_native_class(msg)
-                    metadata[topic_name_in_sql + "_sample"] = msg.data
+            # if msg is not None:
+            if topic_type == "sensor_msgs/Image":
+                # # save the image as local file 
+
+                path = "/tmp/test" + topic_name_in_sql + self.bag_path.replace("/", "") + ".png"
+                # cv2.imwrite(path, data)
+                
+                self.gather_images_from_topic_and_save_as_gif(topic_name, path)
+                metadata[topic_name_in_sql + "_sample"] = path
+            elif topic_type == "std_msgs/String":
+                msg = self.get_the_first_message_of_the_topic(self.reader, topic_name)
+                msg = to_native_class(msg)
+                metadata[topic_name_in_sql + "_sample"] = msg.data
+            # TODO: haven't figured out how to visualize other topics 
                 
         return metadata
     
+
+    def gather_images_from_topic_and_save_as_gif(self, topic_name, path = "./test.gif"):
+        """
+        Gather images from a specific topic and save them as a gif file.
+
+        Args:
+            topic_name (str): The name of the topic.
+
+        """
+        images = []
+        for connection, timestamp, rawdata in self.reader.messages(
+            connections=self.reader.connections
+        ):
+            msg = self.reader.deserialize(rawdata, connection.msgtype)
+            if connection.topic == topic_name:
+                msg = to_native_class(msg)
+                data = msg_to_numpy(msg, "sensor_msgs/Image")
+                images.append(data)
+
+        imageio.mimsave(path, images)
+        
     def get_the_first_message_of_the_topic(self, reader, topic):
         """
         Get the first message of a specific topic.
