@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, send_from_directory, make_response
 from flask_cors import CORS
 from glob import glob
 import dataset
@@ -8,6 +8,8 @@ app = Flask(__name__)
 app.json.sort_keys = False
 CORS(app)
 
+db_connection_prefix = "sqlite:///../data"
+
 
 @app.route("/db")
 def get_dbs():
@@ -16,14 +18,42 @@ def get_dbs():
 
 @app.route("/db/<db_name>")
 def get_tables(db_name):
-    db = dataset.connect(f"sqlite:///{db_name}")
-    print(db.tables)
+    db = dataset.connect(f"{db_connection_prefix}/{db_name}")
     return db.tables
 
 
 @app.route("/db/<db_name>/<table_name>")
 @app.route("/db/<db_name>/<table_name>/<limit>")
-def get_table_from_db(db_name, table_name, limit=10):
-    db = dataset.connect(f"sqlite:///{db_name}")
+def get_table_from_db(db_name, table_name, limit=50):
+    db = dataset.connect(f"{db_connection_prefix}/{db_name}")
     table = db.get_table(table_name)
     return list(table.all(_limit=limit))
+
+@app.route("/db/<db_name>/<table_name>/delete/<row_id>")
+def delete_row(db_name, table_name, row_id):
+    db = dataset.connect(f"{db_connection_prefix}/{db_name}")
+    table = db.get_table(table_name)
+    out = table.delete(id=int(row_id))
+    return make_response({'deleted': out}, 200)
+
+
+@app.route("/export")
+def export_options():
+    observation_topics = ["/wrist_image", "/image", "/end_effector_state", "/state"]
+    action_topics = ["/action"]
+    step_topics = ["/language_embedding", "/language_instruction", "/discount", "/reward"]
+    # orchestrator=PerTimeIntervalTopicOrchestrator(
+    #     per_step_interval=0.1,  # seconds
+    #     per_episode_interval=1.0, # seconds
+    # )
+    return {"observation_topics":observation_topics, "action_topics":action_topics, "step_topics":step_topics}
+
+@app.route("/image/<path:path>")
+def get_image(path):
+    return send_from_directory('image', path)
+
+
+@app.after_request
+def after_request(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response

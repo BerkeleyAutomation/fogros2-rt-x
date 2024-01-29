@@ -1,8 +1,8 @@
 <script>
-    export let onConfirm;
-    export let onCancel;
+    // export let onConfirm;
+    // export let onCancel;
     export let active;
-    export let text;
+    // export let text;
 </script>
 
 <div class={"modal" + (active ? " is-active" : "")}>
@@ -10,9 +10,9 @@
     <div class="modal-content">
         <div class="card p-3">
             <card class="header">
-                <p>{text}</p>
-                <button class="button is-info" on:click={onConfirm}>Confirm</button>
-                <button class="button" on:click={onCancel}>Cancel</button>
+                <slot>
+
+                </slot>
             </card>
         </div>
     </div>
