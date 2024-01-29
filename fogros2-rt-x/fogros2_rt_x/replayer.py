@@ -34,13 +34,13 @@
 import socket
 
 import rclpy
+import rosbag2_py as rosbag
 from rclpy.node import Node
 from .dataset_utils import *
-from fogros2_rt_x_msgs.msg import Step, Observation, Action
-from .dataset_spec import DatasetFeatureSpec
+from .dataset_spec import DatasetFeatureSpec, FeatureSpec
 from .plugins.conf_base import *
 import time
-
+import tensorflow_datasets as tfds
 
 class DatasetReplayer(Node):
     """
@@ -62,8 +62,6 @@ class DatasetReplayer(Node):
 
         self.declare_parameter("dataset_name", "berkeley_fanuc_manipulation")
         dataset_name = self.get_parameter("dataset_name").value
-        self.config = get_dataset_plugin_config_from_str(dataset_name)
-        self.feature_spec = self.config.get_dataset_feature_spec()
 
         self.declare_parameter("per_episode_interval", 5)  # second
         self.per_episode_interval = self.get_parameter("per_episode_interval").value
@@ -75,21 +73,30 @@ class DatasetReplayer(Node):
         )  # as_single_topic | as_separate_topics | both
         replay_type = self.get_parameter("replay_type").value
 
+        self.declare_parameter("enable_bagging", True)
+
         self.dataset = load_rlds_dataset(dataset_name)
         self.logger = self.get_logger()
-        self.logger.info("Loading Dataset " + str(get_dataset_info([dataset_name])))
+        self.dataset_info = get_dataset_info([dataset_name])
+        self.logger.info("Loading Dataset " + str(self.dataset_info))
 
         self.episode = next(iter(self.dataset))
+        self.dataset_features = self.dataset_info[0][1].features
+        self.step_features = self.dataset_features["steps"]
+        self.topics = list()
+        self.init_topics_from_features(self.step_features)
+        
 
         if replay_type == "as_separate_topics":
             self.topic_name_to_publisher_dict = dict()
+            self.topic_name_to_recorder_dict = dict()
             self.init_publisher_separate_topics()
-        elif replay_type == "as_single_topic":
-            self.init_publisher_single_topic()
-        elif replay_type == "both":
-            self.topic_name_to_publisher_dict = dict()
-            self.init_publisher_separate_topics()
-            self.init_publisher_single_topic()
+        # elif replay_type == "as_single_topic":
+        #     self.init_publisher_single_topic()
+        # elif replay_type == "both":
+        #     self.topic_name_to_publisher_dict = dict()
+        #     self.init_publisher_separate_topics()
+        #     self.init_publisher_single_topic()
         else:
             raise ValueError(
                 "Invalid replay_type: "
@@ -97,22 +104,25 @@ class DatasetReplayer(Node):
                 + ". Must be one of: as_separate_topics, as_single_topic."
             )
 
+    def init_topics_from_features(self, features):
+        for name, tf_feature in features.items():
+            if isinstance(tf_feature, tfds.features.FeaturesDict):
+                self.init_topics_from_features(tf_feature)
+            else:
+                if tf_feature.shape == () and tf_feature.dtype.is_bool:
+                    print("Adding to topics:", name, Scalar(dtype=tf.bool))
+                    self.topics.append(FeatureSpec(name, Scalar(dtype=tf.bool)))
+                else:
+                    print("Adding to topics:", name, tf_feature)
+                    self.topics.append(FeatureSpec(name, tf_feature))
+        
+
     def init_publisher_separate_topics(self):
-        for observation in self.feature_spec.observation_spec:
+        for topic in self.topics:
             publisher = self.create_publisher(
-                observation.ros_type, observation.ros_topic_name, 10
+                topic.ros_type, topic.ros_topic_name, 10
             )
-            self.topic_name_to_publisher_dict[observation.ros_topic_name] = publisher
-
-        for action in self.feature_spec.action_spec:
-            publisher = self.create_publisher(
-                action.ros_type, action.ros_topic_name, 10
-            )
-            self.topic_name_to_publisher_dict[action.ros_topic_name] = publisher
-
-        for step in self.feature_spec.step_spec:
-            publisher = self.create_publisher(step.ros_type, step.ros_topic_name, 10)
-            self.topic_name_to_publisher_dict[step.ros_topic_name] = publisher
+            self.topic_name_to_publisher_dict[topic.ros_topic_name] = publisher
 
         self.create_timer(
             self.per_episode_interval, self.timer_callback_separate_topics
@@ -125,67 +135,74 @@ class DatasetReplayer(Node):
 
     def timer_callback_separate_topics(self):
         for step in self.episode["steps"]:
-            for observation in self.feature_spec.observation_spec:
-                if observation.tf_name not in step["observation"]:
-                    self.logger.warn(
-                        f"Observation {observation.tf_name} not found in step data"
+            for topic in self.topics:
+                if topic.tf_name in step:
+                    # Fetch from step data
+                    msg = topic.convert_tf_tensor_data_to_ros2_msg(
+                        step[topic.tf_name]
                     )
-                    continue
-                msg = observation.convert_tf_tensor_data_to_ros2_msg(
-                    step["observation"][observation.tf_name]
-                )
-                self.logger.info(
-                    f"Publishing observation {observation.tf_name} on topic {observation.ros_topic_name}"
-                )
-                self.topic_name_to_publisher_dict[observation.ros_topic_name].publish(
-                    msg
-                )
-
-            for action in self.feature_spec.action_spec:
-                if type(step["action"]) is not dict:
-                    # action is only one tensor/datatype, not a dictionary
-                    msg = action.convert_tf_tensor_data_to_ros2_msg(step["action"])
-                else:
-                    if action.tf_name not in step["action"]:
-                        self.logger.warn(
-                            f"Action {action.tf_name} not found in step data"
-                        )
-                        continue
-                    msg = action.convert_tf_tensor_data_to_ros2_msg(
-                        step["action"][action.tf_name]
+                    self.logger.info(
+                        f"Publishing step {topic.tf_name} on topic {topic.ros_topic_name}"
                     )
-                self.logger.info(
-                    f"Publishing action {action.tf_name} on topic {action.ros_topic_name}"
-                )
-                self.topic_name_to_publisher_dict[action.ros_topic_name].publish(msg)
-
-            for step_feature in self.feature_spec.step_spec:
-                if step_feature.tf_name not in step:
-                    self.logger.warn(
-                        f"Step {step_feature.tf_name} not found in step data"
+                if type(step["observation"]) is dict and topic.tf_name in step["observation"]:
+                    # Fetch from observation data
+                    msg = topic.convert_tf_tensor_data_to_ros2_msg(
+                        step["observation"][topic.tf_name]
                     )
-                    continue
-                msg = step_feature.convert_tf_tensor_data_to_ros2_msg(
-                    step[step_feature.tf_name]
-                )
-                self.logger.info(
-                    f"Publishing step {step_feature.tf_name} on topic {step_feature.ros_topic_name}"
-                )
-                self.topic_name_to_publisher_dict[step_feature.ros_topic_name].publish(
-                    msg
-                )
+                    self.logger.info(
+                        f"Publishing observation {topic.tf_name} on topic {topic.ros_topic_name}"
+                    )
+                if type(step["action"]) is dict and topic.tf_name in step["action"]:
+                    # Fetch from action data
+                    msg = topic.convert_tf_tensor_data_to_ros2_msg(
+                        step["action"][topic.tf_name]
+                    )
+                    self.logger.info(
+                        f"Publishing action {topic.tf_name} on topic {topic.ros_topic_name}"
+                    )
+                
+                self.topic_name_to_publisher_dict[topic.ros_topic_name].publish(msg)
 
             time.sleep(self.per_step_interval)
 
         self.episode = next(iter(self.dataset))
-
-    def timer_callback_single_topic(self):
-        for step in self.episode["steps"]:
-            msg = self.feature_spec.convert_tf_step_to_ros2_msg(
-                step, step["action"], step["observation"]
+        self.create_timer(
+            self.per_episode_interval, self.timer_callback_separate_topics
+        )
+    
+    def init_recorder_separate_topics(self):
+        for topic in self.topics:
+            writer = rosbag.SequentialWriter()
+            storage_options = rosbag._storage.StorageOptions(
+                uri=f'{topic.ros_topic_name}_bag_{1}', 
+                storage_id='sqlite3'
             )
-            self.publisher.publish(msg)
-        self.episode = next(iter(self.dataset))
+            converter_options = rosbag._storage.ConverterOptions('','')
+            writer.open(storage_options, converter_options)
+
+            topic_info = rosbag._storage.TopicMetadata(
+                name=topic.ros_topic_name, 
+                type=topic.ros_type, 
+                serialization_format='cdr'
+            )
+            writer.create_topic(topic_info)
+
+            subscription = self.create_subscription(
+                String,
+                topic.ros_topic_name, 
+                self.topic_callback, 
+                10
+            )
+
+            self.topic_name_to_recorder_dict[topic.ros_topic_name] = (writer, subscription)
+
+    # def timer_callback_single_topic(self):
+    #     for step in self.episode["steps"]:
+    #         msg = self.feature_spec.convert_tf_step_to_ros2_msg(
+    #             step, step["action"], step["observation"]
+    #         )
+    #         self.publisher.publish(msg)
+    #     self.episode = next(iter(self.dataset))
 
 
 def main(args=None):
