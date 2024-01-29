@@ -38,6 +38,7 @@ import rosbag2_py as rosbag
 from rclpy.node import Node
 from .dataset_utils import *
 from .dataset_spec import DatasetFeatureSpec, FeatureSpec
+from .dataset_spec import tf_feature_definition_to_ros_msg_class_str
 from .plugins.conf_base import *
 import time
 import tensorflow_datasets as tfds
@@ -84,6 +85,7 @@ class DatasetReplayer(Node):
         self.dataset_features = self.dataset_info[0][1].features
         self.step_features = self.dataset_features["steps"]
         self.topics = list()
+        self.episode_counter = 1
         self.init_topics_from_features(self.step_features)
         
 
@@ -91,6 +93,7 @@ class DatasetReplayer(Node):
             self.topic_name_to_publisher_dict = dict()
             self.topic_name_to_recorder_dict = dict()
             self.init_publisher_separate_topics()
+            # self.init_recorder_separate_topics()
         # elif replay_type == "as_single_topic":
         #     self.init_publisher_single_topic()
         # elif replay_type == "both":
@@ -110,10 +113,10 @@ class DatasetReplayer(Node):
                 self.init_topics_from_features(tf_feature)
             else:
                 if tf_feature.shape == () and tf_feature.dtype.is_bool:
-                    print("Adding to topics:", name, Scalar(dtype=tf.bool))
+                    # print("Adding to topics:", name, Scalar(dtype=tf.bool))
                     self.topics.append(FeatureSpec(name, Scalar(dtype=tf.bool)))
                 else:
-                    print("Adding to topics:", name, tf_feature)
+                    # print("Adding to topics:", name, tf_feature)
                     self.topics.append(FeatureSpec(name, tf_feature))
         
 
@@ -162,7 +165,8 @@ class DatasetReplayer(Node):
                     )
                 
                 self.topic_name_to_publisher_dict[topic.ros_topic_name].publish(msg)
-
+            
+            # self.check_last_step_update_recorder(step)
             time.sleep(self.per_step_interval)
 
         self.episode = next(iter(self.dataset))
@@ -172,29 +176,48 @@ class DatasetReplayer(Node):
     
     def init_recorder_separate_topics(self):
         for topic in self.topics:
+            ros_msg_type_string = tf_feature_definition_to_ros_msg_class_str(topic.tf_type)
+            
             writer = rosbag.SequentialWriter()
             storage_options = rosbag._storage.StorageOptions(
-                uri=f'{topic.ros_topic_name}_bag_{1}', 
-                storage_id='sqlite3'
+                uri=f"bags/episode{self.episode_counter}/{topic.ros_topic_name}_bag", 
+                storage_id="sqlite3"
             )
-            converter_options = rosbag._storage.ConverterOptions('','')
+            converter_options = rosbag._storage.ConverterOptions("","")
             writer.open(storage_options, converter_options)
 
             topic_info = rosbag._storage.TopicMetadata(
                 name=topic.ros_topic_name, 
-                type=topic.ros_type, 
-                serialization_format='cdr'
+                type=ros_msg_type_string, 
+                serialization_format="cdr"
             )
             writer.create_topic(topic_info)
 
             subscription = self.create_subscription(
-                String,
+                topic.ros_type,
                 topic.ros_topic_name, 
-                self.topic_callback, 
+                self.create_topic_callback_function(topic.ros_topic_name), 
                 10
             )
 
             self.topic_name_to_recorder_dict[topic.ros_topic_name] = (writer, subscription)
+
+    def create_topic_callback_function(self, topic_name):
+        self.logger.info(f"Creating topic callback function for {topic_name}")
+        def topic_callback(self, msg=''):
+            recorder, _ = self.topic_name_to_recorder_dict[topic_name]
+            recorder.write(
+                topic_name, 
+                rclpy.serialization.serialize_message(msg), 
+                self.get_clock().now().nanoseconds
+            )
+        return topic_callback
+    
+    def check_last_step_update_recorder(self, step):
+        if step["is_last"]:
+            self.logger.info(f"End of episode {self.episode_counter}")
+            self.episode_counter += 1
+            self.init_recorder_separate_topics()
 
     # def timer_callback_single_topic(self):
     #     for step in self.episode["steps"]:
