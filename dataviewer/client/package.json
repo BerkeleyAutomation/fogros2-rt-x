@@ -22,6 +22,7 @@
 	"type": "module",
 	"dependencies": {
 		"@fortawesome/free-regular-svg-icons": "^6.5.1",
-		"svelte-fa": "^4.0.2"
+		"svelte-fa": "^4.0.2",
+		"svelte-tags-input": "^6.0.0"
 	}
 }
