@@ -13,14 +13,14 @@
   let tablename = "";
   let tabledata = [];
   let columns = [];
-  let columns_toggle = {};
+  let activeCols = {};
 
-  let row_count = 0;
+  let totalRows = 0;
   let page = 0;
-  let rows_per_page = 20;
+  let rowsPerPage = 20;
 
-  let sort_column = "";
-  let decrementing = false;
+  let colSortBy = "";
+  let sortDec = false;
 
   let savedTempValue = "";
   let activeModal = "";
@@ -72,16 +72,19 @@
   async function fetchData() {
     message = "Fetching data...";
     const res = await fetch(
-      `${server}/db/${dbfile}/${tablename}/${rows_per_page}/${page}?sortby=${
-        decrementing ? "-" : ""
-      }${sort_column}`
+      `${server}/db/${dbfile}/${tablename}/${rowsPerPage}/${page}?sortby=${
+        sortDec ? "-" : ""
+      }${colSortBy}`
     );
     const result = await res.json();
     tabledata = result["data"];
-    row_count = result["count"];
+    totalRows = result["count"];
 
+    const oldColumns = columns
     columns = tabledata.length > 0 ? Object.keys(tabledata[0]) : [];
-    columns_toggle = Object.fromEntries(columns.map((c) => [c, true]));
+    if (!(oldColumns.length > 0 && columns.every((c, i) => c === oldColumns[i]))) {
+      activeCols = Object.fromEntries(columns.map((c) => [c, true]));
+    }
 
     message = "";
     return true;
@@ -172,14 +175,14 @@
   function selectAllColumns(value) {
     return () => {
       columns.forEach((col) => {
-        columns_toggle[col] = value;
+        activeCols[col] = value;
       });
     };
   }
 
   function changePage(p, force = false) {
     return () => {
-      p = Math.min(Math.max(0, p), (row_count / rows_per_page) >> 0);
+      p = Math.min(Math.max(0, p), (totalRows / rowsPerPage) >> 0);
       if (force || page != p) {
         page = p;
         fetchData();
@@ -189,8 +192,8 @@
 
   function sortBy(col) {
     return async () => {
-      decrementing = sort_column == col ? !decrementing : false;
-      sort_column = col;
+      sortDec = colSortBy == col ? !sortDec : false;
+      colSortBy = col;
       await fetchData();
     };
   }
@@ -338,7 +341,7 @@
           <div class="control">
             {#each columns as col}
               <label class="checkbox">
-                <input type="checkbox" bind:checked={columns_toggle[col]} />
+                <input type="checkbox" bind:checked={activeCols[col]} />
                 {col}
               </label>
               <br />
@@ -364,7 +367,7 @@
         <input
           class="input is-small mr-1"
           type="input"
-          bind:value={rows_per_page}
+          bind:value={rowsPerPage}
           on:focusout={changePage(page, true)}
           style="width:5em"
         />
@@ -401,8 +404,8 @@
           </div>
           <div class="level-item">
             <p>
-              Showing {1 + page * rows_per_page}-{page * rows_per_page +
-                tabledata.length} of {row_count} data points
+              Showing {1 + page * rowsPerPage}-{page * rowsPerPage +
+                tabledata.length} of {totalRows} data points
             </p>
           </div>
         </div>
@@ -415,11 +418,11 @@
               <!-- extra first column for edittools (delete) -->
             </th>
             {#each columns as col}
-              {#if columns_toggle[col]}
+              {#if activeCols[col]}
                 <th
                   class={"table-column-hover " +
-                    (sort_column == col
-                      ? decrementing
+                    (colSortBy == col
+                      ? sortDec
                         ? "has-text-danger has-background-danger-light"
                         : "has-text-info has-background-info-light"
                       : "")}
@@ -443,7 +446,7 @@
                 </div>
               </td>
               {#each Object.entries(row) as [col, val]}
-                {#if columns_toggle[col]}
+                {#if activeCols[col]}
                   <td>
                     {#if col in datatypes}
                       {#if datatypes[col] == "boolean"}
