@@ -11,19 +11,22 @@ class ExportVerb(VerbExtension):
         )
 
         parser.add_argument(
-            "-o" "--topic_observation",
+            "-o",
+            "--topic_observation",
             nargs="+",
             help="topic name of the observation, error when not specified",
         )
 
         parser.add_argument(
-            "-a" "--topic_action",
+            "-a",
+            "--topic_action",
             nargs="+",
             help="topic name of the action, error when not specified",
         )
 
         parser.add_argument(
-            "-s" "--topic_step",
+            "-s",
+            "--topic_step",
             nargs="+",
             help="topic name of the step, error when not specified",
         )
@@ -39,7 +42,7 @@ class ExportVerb(VerbExtension):
             nargs="*",
             help="Location of the metadata database, by default it stores at the same location as the dataset_dir",
         )
-        
+
         parser.add_argument(
             "--destination",
             nargs="*",
@@ -52,9 +55,9 @@ class ExportVerb(VerbExtension):
         else:
             self.dataset_name = args.dataset_name
 
-        print("observation_topics: {}".format(args.o__topic_observation))
-        print("action_topics: {}".format(args.a__topic_action))
-        print("step_topics: {}".format(args.s__topic_step))
+        print("observation_topics: {}".format(args.topic_observation))
+        print("action_topics: {}".format(args.topic_action))
+        print("step_topics: {}".format(args.topic_step))
 
         # (
         #     observation_topics,
@@ -62,9 +65,9 @@ class ExportVerb(VerbExtension):
         #     step_topics,
         #     orchestrator,
         # ) = get_dataset_config_from_str(self.dataset_name)
-        observation_topics = args.o__topic_observation
-        action_topics = args.a__topic_action
-        step_topics = args.s__topic_step
+        observation_topics = args.topic_observation
+        action_topics = args.topic_action
+        step_topics = args.topic_step
         
         if args.orchstrator is None:
             from fogros2_rt_x.plugins.orchestrator_examples import PerTimeIntervalTopicOrchestrator
