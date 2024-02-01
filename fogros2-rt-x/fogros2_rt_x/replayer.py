@@ -35,8 +35,9 @@ import socket
 
 import rclpy
 import rosbag2_py as rosbag
-from rosbag2_py import Recorder, RecordOptions, StorageOptions
+from rosbag2_py import Recorder
 from rclpy.node import Node
+from .recorder import restart_recorder
 from .dataset_utils import *
 from .dataset_spec import DatasetFeatureSpec, FeatureSpec
 from .dataset_spec import tf_feature_definition_to_ros_msg_class_str
@@ -105,12 +106,13 @@ class DatasetReplayer(Node):
                 self.init_topics_from_features(tf_feature)
             else:
                 if tf_feature.shape == () and tf_feature.dtype.is_bool:
-                    # print("Adding to topics:", name, Scalar(dtype=tf.bool))
                     self.topics.append(FeatureSpec(name, Scalar(dtype=tf.bool)))
                 else:
-                    # print("Adding to topics:", name, tf_feature)
                     self.topics.append(FeatureSpec(name, tf_feature))
         
+        
+
+
 
     def init_publisher_separate_topics(self):
         for topic in self.topics:
@@ -122,11 +124,6 @@ class DatasetReplayer(Node):
         self.create_timer(
             self.per_episode_interval, self.timer_callback_separate_topics
         )
-
-    def init_publisher_single_topic(self):
-        self.publisher = self.create_publisher(Step, "step_info", 10)
-        callback = self.timer_callback_single_topic
-        self.create_timer(self.per_episode_interval, callback)
 
     def timer_callback_separate_topics(self):
         for step in self.episode["steps"]:
@@ -158,7 +155,7 @@ class DatasetReplayer(Node):
                 
                 self.topic_name_to_publisher_dict[topic.ros_topic_name].publish(msg)
             
-            # self.check_last_step_update_recorder(step)
+            self.check_last_step_update_recorder(step)
             time.sleep(self.per_step_interval)
 
         self.episode = next(iter(self.dataset))
@@ -166,26 +163,12 @@ class DatasetReplayer(Node):
             self.per_episode_interval, self.timer_callback_separate_topics
         )
     
-    # def init_recorder(self):
-    #     storage_options = StorageOptions(
-    #         uri=f"rosbags/episode {self.episode_counter}",
-    #         storage_id="sqlite3"
-    #     )
-
-    #     record_options = RecordOptions()
-    #     record_options.all = True
-    #     recorder = Recorder()
-
-    #     try:
-    #         recorder.record(storage_options, record_options)
-    #     except KeyboardInterrupt:
-    #         pass
-    
-    # def check_last_step_update_recorder(self, step):
-    #     if step["is_last"]:
-    #         self.logger.info(f"End of episode {self.episode_counter}")
-    #         self.episode_counter += 1
-    #         self.init_recorder_separate_topics()
+    def check_last_step_update_recorder(self, step):
+        if step["is_last"]:
+            self.logger.info(f"End of the current episode")
+            self.episode_counter += 1
+            # restart_recorder(self.episode_counter)
+            restart_recorder()
 
 def main(args=None):
     # tf.experimental.numpy.experimental_enable_numpy_behavior()
