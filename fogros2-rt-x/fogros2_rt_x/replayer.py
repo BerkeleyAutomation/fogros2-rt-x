@@ -37,13 +37,13 @@ import rclpy
 import rosbag2_py as rosbag
 from rosbag2_py import Recorder
 from rclpy.node import Node
-from .recorder import restart_recorder
 from .dataset_utils import *
 from .dataset_spec import DatasetFeatureSpec, FeatureSpec
 from .dataset_spec import tf_feature_definition_to_ros_msg_class_str
-from .plugins.conf_base import *
+from .conf_base import *
 import time
 import tensorflow_datasets as tfds
+from std_srvs.srv import Empty
 
 class DatasetReplayer(Node):
     """
@@ -88,6 +88,9 @@ class DatasetReplayer(Node):
         self.episode_counter = 1
         self.init_topics_from_features(self.step_features)
         
+        # create an empty ros2 servcice to start and stop recording
+        self.new_episode_notification_client = self.create_client(Empty, 'new_episode_notification_service')
+        self.new_episode_notification_req = Empty.Request()
 
         if replay_type == "as_separate_topics":
             self.topic_name_to_publisher_dict = dict()
@@ -168,7 +171,11 @@ class DatasetReplayer(Node):
             self.logger.info(f"End of the current episode")
             self.episode_counter += 1
             # restart_recorder(self.episode_counter)
-            restart_recorder()
+            # restart_recorder()
+            while not self.new_episode_notification_client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info('Service not available, waiting again...')
+            self.future = self.new_episode_notification_client.call_async(self.new_episode_notification_req)
+
 
 def main(args=None):
     # tf.experimental.numpy.experimental_enable_numpy_behavior()

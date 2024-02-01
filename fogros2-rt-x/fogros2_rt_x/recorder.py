@@ -4,37 +4,9 @@ import rclpy
 from rosbag2_py import Recorder, RecordOptions, StorageOptions
 from rclpy.node import Node
 import time
-from .replayer_common import episode_recorder
+from std_srvs.srv import Empty
+from threading import Thread
 
-def init_recorder():
-    global episode_recorder
-    storage_options = StorageOptions(
-        uri=f"rosbags/episode_{1}",
-        storage_id="sqlite3"
-    )
-    record_options = RecordOptions()
-    record_options.all = True
-    episode_recorder.record(storage_options, record_options)
-
-
-def start_new_recorder(episode_counter):
-    global episode_recorder
-    print("CURRENT EPISODE IS:", episode_counter)
-    storage_options = StorageOptions(
-        uri=f"rosbags/episode_{episode_counter}",
-        storage_id="sqlite3"
-    )
-    record_options = RecordOptions()
-    record_options.all = True
-    # episode_recorder = Recorder()
-    episode_recorder.record(storage_options, record_options)
-
-def restart_recorder():
-    global episode_recorder
-    print("ATTR:", dir(episode_recorder))
-    episode_recorder.cancel()
-    episode_recorder.stop()
-    
 
 class DatasetRecorder(Node):
     """
@@ -52,13 +24,38 @@ class DatasetRecorder(Node):
     """
     def __init__(self):
         super().__init__("fogros2_rt_x_recorder")
+
+        self.new_episode_notification_service = self.create_service(Empty, 'new_episode_notification_service', self.new_episode_notification_service_callback)
+        self.episode_recorder = Recorder()
+
         self.logger = self.get_logger()
         self.episode_counter = 1
-        init_recorder()
-        while True:
-            self.episode_counter += 1
-            start_new_recorder(self.episode_counter)
+        self.init_recorder()
+        self.logger.info("Recording started")
+    
+    def new_episode_notification_service_callback(self, request, response):
+        self.logger.info("Received request to start new episode")
+        self.stop_recorder()
+        self.start_new_recorder()
+        return response
+    
+    def init_recorder(self):
+        self.start_new_recorder()
 
+    def start_new_recorder(self):
+        self.logger.info(f"starting episode #: {self.episode_counter}")
+        storage_options = StorageOptions(
+            uri=f"rosbags/episode_{self.episode_counter}",
+            storage_id="sqlite3"
+        )
+        record_options = RecordOptions()
+        record_options.all = True
+        self.thread = Thread(target=self.episode_recorder.record, args=(storage_options, record_options)).start()
+        self.episode_counter += 1
+
+    def stop_recorder(self):
+        self.episode_recorder.cancel()
+        
 def main(args=None):
 
     rclpy.init(args=args)
