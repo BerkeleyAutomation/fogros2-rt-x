@@ -27,7 +27,7 @@ export ROS_DISTRO=humble
 2. Install python dependencies.
 ```
 apt-get install libgmp-dev sqlite3 ros-$ROS_DISTRO-tf-transformations ros-$ROS_DISTRO-ament-cmake-nose ros-$ROS_DISTRO-rosbag2
-pip install tensorflow envlogger[tfds] numpy transforms3d
+pip install imageio tensorflow envlogger[tfds] numpy transforms3d
 ```
 It's not recommended to use conda environment. It [does not work well](https://docs.ros.org/en/foxy/How-To-Guides/Using-Python-Packages.html) with ROS/ROS2.
 
@@ -91,8 +91,9 @@ You can implement your own policy of orchestrating different topics by inheritin
 
 2. Run 
 ```
-ros2 fgr export --dataset_name="berkeley_fanuc_manipulation"
+ros2 fgr export -o /image /wrist_image /end_effector_state /state  -a /action /state -s /reward  /language_embedding /language_instruction /discount --dataset_name="berkeley_fanuc_manipulation" --destination "./playground_ds"
 ```
+dataset_name needs to be consistent. (TODO: more elaborative)
 
 #### Replaying with existing datasets in Open-X-Embodiment
 You can replay existing datasets in ROS2 with 
