@@ -37,10 +37,9 @@ import rclpy
 import rosbag2_py as rosbag
 from rosbag2_py import Recorder
 from rclpy.node import Node
-from .recorder import restart_recorder
+from .replayer_common import in_episode
 from .dataset_utils import *
 from .dataset_spec import DatasetFeatureSpec, FeatureSpec
-from .dataset_spec import tf_feature_definition_to_ros_msg_class_str
 from .plugins.conf_base import *
 import time
 import tensorflow_datasets as tfds
@@ -85,13 +84,11 @@ class DatasetReplayer(Node):
         self.dataset_features = self.dataset_info[0][1].features
         self.step_features = self.dataset_features["steps"]
         self.topics = list()
-        self.episode_counter = 1
         self.init_topics_from_features(self.step_features)
         
 
         if replay_type == "as_separate_topics":
             self.topic_name_to_publisher_dict = dict()
-            self.topic_name_to_recorder_dict = dict()
             self.init_publisher_separate_topics()
         else:
             raise ValueError(
@@ -110,9 +107,6 @@ class DatasetReplayer(Node):
                 else:
                     self.topics.append(FeatureSpec(name, tf_feature))
         
-        
-
-
 
     def init_publisher_separate_topics(self):
         for topic in self.topics:
@@ -166,9 +160,8 @@ class DatasetReplayer(Node):
     def check_last_step_update_recorder(self, step):
         if step["is_last"]:
             self.logger.info(f"End of the current episode")
-            self.episode_counter += 1
-            # restart_recorder(self.episode_counter)
-            restart_recorder()
+            global in_episode
+            in_episode = False
 
 def main(args=None):
     # tf.experimental.numpy.experimental_enable_numpy_behavior()
