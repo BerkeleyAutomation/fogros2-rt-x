@@ -26,13 +26,18 @@
   let activeModal = "";
   let modalText = "";
   let confirmEdit = true;
+
+  let orchestrator = "";
+  let exportDest = "google";
+  let exportLoading = false;
+
   let exportOptions = {
     orchestrators: [],
     topics: {
-    action_topics: [],
-    step_topics: [],
-    observation_topics: [],
-    }
+      action_topics: [],
+      step_topics: [],
+      observation_topics: [],
+    },
   };
 
   let buttonLoading = false;
@@ -80,9 +85,11 @@
     tabledata = result["data"];
     totalRows = result["count"];
 
-    const oldColumns = columns
+    const oldColumns = columns;
     columns = tabledata.length > 0 ? Object.keys(tabledata[0]) : [];
-    if (!(oldColumns.length > 0 && columns.every((c, i) => c === oldColumns[i]))) {
+    if (
+      !(oldColumns.length > 0 && columns.every((c, i) => c === oldColumns[i]))
+    ) {
       activeCols = Object.fromEntries(columns.map((c) => [c, true]));
     }
 
@@ -109,14 +116,32 @@
     }
   }
 
+  function updateExportOption(option) {
+    return (value) => {
+      exportOptions[option] = value;
+    };
+  }
+
   async function exportData(event) {
-    const res = await fetch(`${server}/export`);
-    if (res.ok) {
-      message = `Exported data successfully`;
-      activeModal = "";
-    } else {
+    buttonLoading = true;
+    try {
+      const res = await fetch(
+        `${server}/export/${dbfile}/${exportDest}?orchestrator=${orchestrator}` +
+          `&o=${exportOptions["topics"]["observation_topics"]}` +
+          `&s=${exportOptions["topics"]["step_topics"]}` +
+          `&a=${exportOptions["topics"]["action_topics"]}`
+      );
+      if (res.ok) {
+        message = `Exported data to ${exportData}`;
+        activeModal = "";
+      } else {
+        throw new Error(`Something went wrong: ${res.status}`);
+      }
+    } catch (error) {
       message = `Error exporting data`;
-      modalText = `Error exporting data`;
+      modalText = `Error, check console for details.`;
+      console.log(error)
+    } finally {
       buttonLoading = false;
     }
   }
@@ -161,9 +186,12 @@
         }
       } else if (name == "export") {
         activeModal = "export";
-        modalText = `Export data`;
-        const res = await fetch(`${server}/export`);
+        modalText = "";
+        const res = await fetch(`${server}/export/options`);
         exportOptions = await res.json();
+        if (exportOptions["orchestrators"].length > 0) {
+          orchestrator = exportOptions["orchestrators"][0];
+        }
       }
     };
   }
@@ -224,7 +252,7 @@
       <div class="field">
         <div class="control">
           <div class="select">
-            <select>
+            <select bind:value={orchestrator}>
               {#each exportOptions["orchestrators"] as o}
                 <option>{o}</option>
               {/each}
@@ -241,9 +269,11 @@
       <div class="field-body">
         <div class="field is-expanded">
           <!-- check keycodes https://www.toptal.com/developers/keycode -->
+          <!-- bind:tags={exportOptions["topics"][option]} -->
           <Tags
             bind:tags={exportOptions["topics"][option]}
-            addKeys={[9,32,188,13]}
+            on:tags={updateExportOption(option)}
+            addKeys={[9, 32, 188, 13]}
             allowPaste={true}
             allowDrop={true}
             onlyUnique={true}
@@ -255,15 +285,14 @@
     </div>
   {/each}
 
-
   <div class="field is-horizontal">
     <label class="field-label is-normal">Destination</label>
     <div class="field-body">
       <div class="field">
         <div class="control">
           <div class="select">
-            <select>
-              <option>Upload to Google</option>
+            <select bind:value={exportDest}>
+              <option value="google">Upload to Google</option>
             </select>
           </div>
         </div>
@@ -275,6 +304,9 @@
     on:click={exportData}>Export</button
   >
   <button class="button" on:click={onModalCancel}>Cancel</button>
+  <div class="is-inline-block p-2">
+    {modalText}
+  </div>
 </Modal>
 <!-- End Modals -->
 
@@ -286,8 +318,9 @@
     <p>{message}</p>
   </div>
   <div class="column is-narrow">
-    <button class="button is-pulled-right" on:click={showModal("export")}
-      >Export to RLDS</button
+    <button
+      class={"button is-pulled-right" + (exportLoading ? " is-loading" : "")}
+      on:click={showModal("export")}>Export to RLDS</button
     >
   </div>
 </div>

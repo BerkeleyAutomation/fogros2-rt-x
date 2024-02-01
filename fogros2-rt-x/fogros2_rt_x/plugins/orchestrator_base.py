@@ -31,9 +31,13 @@
 # PROVIDED HEREUNDER IS PROVIDED "AS IS". REGENTS HAS NO OBLIGATION TO PROVIDE
 # MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
-import dm_env
-from envlogger import step_data
-import logging
+try:
+    import dm_env
+    from envlogger import step_data
+    import logging
+except ImportError:
+    logging = None
+    dm_env = None
 
 
 class BaseTopicOrchestrator:
@@ -58,7 +62,7 @@ class BaseTopicOrchestrator:
     """
 
     def __init__(self, reward=0.0, discount=1.0):
-        self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(__name__) if logging else None
         self.writer = None
         self.reward = reward
         self.discount = discount
@@ -68,7 +72,7 @@ class BaseTopicOrchestrator:
         self.default_action = dict()
         self.default_step = dict()
 
-        self.step_type = dm_env.StepType.FIRST
+        self.step_type = dm_env.StepType.FIRST if dm_env else None
         self.observation = dict()
         self.action = dict()
         self.step = dict()

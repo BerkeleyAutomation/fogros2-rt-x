@@ -1,20 +1,18 @@
 <script>
-    // export let onConfirm;
-    // export let onCancel;
-    export let active;
-    // export let text;
+  export let active;
 </script>
 
 <div class={"modal" + (active ? " is-active" : "")}>
-    <div class="modal-background" style="opacity:0.7"></div>
-    <div class="modal-content">
-        <div class="card p-3">
-            <card class="header">
-                <slot>
-
-                </slot>
-            </card>
-        </div>
+  <div
+    class="modal-background"
+    style="opacity:0.7"
+  ></div>
+    <!-- on:click={() => (active = false)} -->
+  <div class="modal-content">
+    <div class="card p-3">
+      <card class="header">
+        <slot />
+      </card>
     </div>
-    <button class="modal-close is-large" aria-label="close"></button>
   </div>
+</div>

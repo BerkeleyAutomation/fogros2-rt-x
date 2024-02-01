@@ -7,6 +7,7 @@ flask run &
 
 cd ..
 cd client
+npm install 
 npm start &
 
 wait
