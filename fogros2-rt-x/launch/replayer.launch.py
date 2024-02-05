@@ -44,7 +44,7 @@ def generate_launch_description():
         executable="replayer",
         output="screen",
         parameters = [
-            {"dataset_name": "berkeley_fanuc_manipulation"}, 
+            {"dataset_name": "nyu_rot_dataset_converted_externally_to_rlds"}, 
         ]
     )
 
@@ -55,7 +55,7 @@ def generate_launch_description():
         executable="recorder",
         output="screen",
         parameters = [
-            {"dataset_name": "berkeley_fanuc_manipulation"}, 
+            {"dataset_name": "nyu_rot_dataset_converted_externally_to_rlds"}, 
         ]
     )
     ld.add_action(recorder_node)
