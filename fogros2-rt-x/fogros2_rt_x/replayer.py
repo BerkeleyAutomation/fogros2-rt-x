@@ -44,6 +44,7 @@ from .conf_base import *
 import time
 import tensorflow_datasets as tfds
 from std_srvs.srv import Empty
+import sys
 
 class DatasetReplayer(Node):
     """
@@ -65,15 +66,15 @@ class DatasetReplayer(Node):
         self.logger = self.get_logger()
         # create an empty ros2 servcice to start and stop recording and one to start recording new dataset
         self.new_episode_notification_client = self.create_client(Empty, 'new_episode_notification_service')
-        self.new_dataset_notification_client = self.create_client(Empty, 'new_dataset_notification_service')
         self.new_episode_notification_req = Empty.Request()
-        self.new_dataset_notification_req = Empty.Request()
+        self.end_dataset_notification_client = self.create_client(Empty, 'end_dataset_notification_service')
+        self.end_dataset_notification_req = Empty.Request()
 
-        self.declare_parameter("dataset_name", "nyu_rot_dataset_converted_externally_to_rlds")
-        # dataset_name | all
+        self.declare_parameter("dataset_name", "berkeley_fanuc_manipulation")
         dataset_name = self.get_parameter("dataset_name").value
+        self.episode_limit = 25
 
-        self.declare_parameter("per_episode_interval", 5)  # second
+        self.declare_parameter("per_episode_interval", 10)  # second
         self.per_episode_interval = self.get_parameter("per_episode_interval").value
         self.declare_parameter("per_step_interval", 0.2)  # second
         self.per_step_interval = self.get_parameter("per_step_interval").value
@@ -83,30 +84,25 @@ class DatasetReplayer(Node):
         )  # as_single_topic | as_separate_topics | both
         replay_type = self.get_parameter("replay_type").value
 
-        if dataset_name == "all":
-            self.dataset_list_iter = iter(EXISTING_DATASETS)
-        else:
-            self.dataset_list_iter = iter([dataset_name])
-
-        self.replay_new_dataset()
-            
-            
-    def replay_new_dataset(self):
-        replay_type = self.get_parameter("replay_type").value
-        try:
-            dataset_item = next(self.dataset_list_iter)
-        except StopIteration:
-            self.logger.info("ALL DATASETS FINISHED REPLAYING")
-            return
-        self.dataset = load_rlds_dataset(dataset_item)
-        self.dataset_info = get_dataset_info([dataset_item])
+        self.episode_counter = 1
+        self.dataset = load_rlds_dataset(dataset_name)
+        self.dataset_info = get_dataset_info([dataset_name])
         self.logger.info("Loading Dataset " + str(self.dataset_info))
+        # self.logger.info(f"Total episodes {len(self.dataset)}") #DEBUG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         self.dataset_iter = iter(self.dataset)
         self.episode = next(self.dataset_iter)
         self.dataset_features = self.dataset_info[0][1].features
         self.step_features = self.dataset_features["steps"]
         self.topics = list()
         self.init_topics_from_features(self.step_features)
+
+        # while True: # DEBUG!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        #     self.logger.info(f"Episode {self.episode_counter}")
+        #     try:
+        #         self.episode = next(self.dataset_iter)
+        #         self.episode_counter += 1
+        #     except StopIteration:
+        #         return
 
         if replay_type == "as_separate_topics":
             self.topic_name_to_publisher_dict = dict()
@@ -119,14 +115,16 @@ class DatasetReplayer(Node):
                 + ". Must be one of: as_separate_topics, as_single_topic."
             )  
 
-
     def init_topics_from_features(self, features):
         for name, tf_feature in features.items():
+            # self.logger.info(f"converting {name} and type {tf_feature}")
             if isinstance(tf_feature, tfds.features.FeaturesDict):
                 self.init_topics_from_features(tf_feature)
             else:
-                if tf_feature.shape == () and tf_feature.dtype.is_bool:
+                if tf_feature.shape == () and tf_feature.tf_dtype.is_bool:
                     self.topics.append(FeatureSpec(name, Scalar(dtype=tf.bool)))
+                elif tf_feature.shape == () and tf_feature.tf_dtype is tf.string:
+                    self.topics.append(FeatureSpec(name, Text()))
                 else:
                     self.topics.append(FeatureSpec(name, tf_feature))
         
@@ -143,6 +141,9 @@ class DatasetReplayer(Node):
     def timer_callback_separate_topics(self):
         for step in self.episode["steps"]:
             for topic in self.topics:
+                # self.logger.info(
+                #     f"Publishing data {step[topic.tf_name]} on topic {topic.ros_topic_name}"
+                # )
                 if topic.tf_name in step:
                     # Fetch from step data
                     msg = topic.convert_tf_tensor_data_to_ros2_msg(
@@ -174,23 +175,25 @@ class DatasetReplayer(Node):
             time.sleep(self.per_step_interval)
         try:
             self.episode = next(self.dataset_iter)
-            # self.timer = self.create_timer(
-            #     self.per_episode_interval, self.timer_callback_separate_topics
-            # )
         except StopIteration:
-            self.logger.info(f"End of the current dataset")
-            self.timer.destroy()
-
-            while not self.new_dataset_notification_client.wait_for_service(timeout_sec=1.0):
-                self.get_logger().info('Service not available, waiting again...')
-            self.future = self.new_dataset_notification_client.call_async(self.new_dataset_notification_req)
-            self.future.result()
-
-            self.replay_new_dataset()
+            self.end_of_dataset_sequence()
     
+    def end_of_dataset_sequence(self):
+        self.logger.info(f"End of the current dataset or exceeding episode limit")
+        while not self.new_episode_notification_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Service not available, waiting again...')
+        self.future = self.end_dataset_notification_client.call_async(self.end_dataset_notification_req)
+        self.future.result()
+        self.timer.destroy()
+        sys.exit()
+
     def check_last_step_update_recorder(self, step):
         if step["is_last"]:
             self.logger.info(f"End of the current episode")
+            self.episode_counter += 1
+            if self.episode_counter > self.episode_limit:
+                self.logger.info(f"Exceeding episode limit. Current: {self.episode_counter}, limit {self.episode_limit}")
+                self.end_of_dataset_sequence()
             while not self.new_episode_notification_client.wait_for_service(timeout_sec=1.0):
                 self.get_logger().info('Service not available, waiting again...')
             self.future = self.new_episode_notification_client.call_async(self.new_episode_notification_req)

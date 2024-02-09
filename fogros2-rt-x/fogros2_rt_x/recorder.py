@@ -6,6 +6,7 @@ from rclpy.node import Node
 import time
 from std_srvs.srv import Empty
 from threading import Thread
+import sys
 
 
 class DatasetRecorder(Node):
@@ -24,9 +25,10 @@ class DatasetRecorder(Node):
     """
     def __init__(self):
         super().__init__("fogros2_rt_x_recorder")
-
+        self.declare_parameter("dataset_name", "nyu_rot_dataset_converted_externally_to_rlds")
+        self.dataset_name = self.get_parameter("dataset_name").value
         self.new_episode_notification_service = self.create_service(Empty, 'new_episode_notification_service', self.new_episode_notification_service_callback)
-        self.new_dataset_notification_service = self.create_service(Empty, 'new_dataset_notification_service', self.new_dataset_notification_service_callback)
+        self.end_dataset_notification_service = self.create_service(Empty, 'end_dataset_notification_service', self.end_dataset_notification_service_callback)
         self.episode_recorder = Recorder()
 
         self.logger = self.get_logger()
@@ -34,13 +36,11 @@ class DatasetRecorder(Node):
         self.dataset_counter = 1
         self.init_recorder()
         self.logger.info("Recording started")
-    
-    def new_dataset_notification_service_callback(self, request, response):
-        self.logger.info("Received request to start new dataset")
+
+    def end_dataset_notification_service_callback(self, request, response):
+        self.logger.info("Received request to end recording")
         self.stop_recorder()
-        self.episode_counter = 1
-        self.dataset_counter += 1
-        self.start_new_recorder()
+        sys.exit()
         return response
 
     def new_episode_notification_service_callback(self, request, response):
@@ -56,7 +56,7 @@ class DatasetRecorder(Node):
     def start_new_recorder(self):
         self.logger.info(f"starting episode #: {self.episode_counter}")
         storage_options = StorageOptions(
-            uri=f"rosbags/dataset_{self.dataset_counter}/episode_{self.episode_counter}",
+            uri=f"rosbags/{self.dataset_name}/episode_{self.episode_counter}",
             storage_id="sqlite3"
         )
         record_options = RecordOptions()

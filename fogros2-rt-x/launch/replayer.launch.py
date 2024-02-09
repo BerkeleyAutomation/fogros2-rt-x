@@ -33,18 +33,22 @@
 
 from launch import LaunchDescription
 from launch_ros.actions import Node
-
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 
 def generate_launch_description():
     """Talker example that launches everything locally."""
-    ld = LaunchDescription()
+    
+    ld = LaunchDescription([
+        DeclareLaunchArgument('dataset_name', default_value='berkeley_fanuc_manipulation')
+    ])
 
     replayer_node = Node(
         package="fogros2_rt_x",
         executable="replayer",
         output="screen",
         parameters = [
-            {"dataset_name": "nyu_rot_dataset_converted_externally_to_rlds"}, 
+            {"dataset_name": LaunchConfiguration('dataset_name')}, 
         ]
     )
 
@@ -55,7 +59,7 @@ def generate_launch_description():
         executable="recorder",
         output="screen",
         parameters = [
-            {"dataset_name": "nyu_rot_dataset_converted_externally_to_rlds"}, 
+            {"dataset_name": LaunchConfiguration('dataset_name')}, 
         ]
     )
     ld.add_action(recorder_node)

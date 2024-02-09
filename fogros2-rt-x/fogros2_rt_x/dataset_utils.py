@@ -107,7 +107,10 @@ def dataset2path(dataset_name):
 
 def load_rlds_dataset(dataset_name="kuka"):
     b = tfds.builder_from_directory(builder_dir=dataset2path(dataset_name))
-    ds = b.as_dataset(split="train[:10]")
+    if dataset_name in ["nyu_rot_dataset_converted_externally_to_rlds", "utokyo_saytap_converted_externally_to_rlds"]:
+        ds = b.as_dataset()
+    else:
+        ds = b.as_dataset(split="train[:30]")
     return ds
 
 
