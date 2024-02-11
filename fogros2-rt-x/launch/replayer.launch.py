@@ -49,4 +49,14 @@ def generate_launch_description():
     )
 
     ld.add_action(replayer_node)
+
+    recorder_node = Node(
+        package="fogros2_rt_x",
+        executable="recorder",
+        output="screen",
+        parameters = [
+            {"dataset_name": "berkeley_fanuc_manipulation"}, 
+        ]
+    )
+    ld.add_action(recorder_node)
     return ld

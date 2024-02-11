@@ -34,7 +34,6 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
-from fogros2_rt_x_msgs.msg import Step, Observation, Action
 from cv_bridge import CvBridge
 from std_msgs.msg import MultiArrayLayout, MultiArrayDimension
 from sensor_msgs.msg import Image
