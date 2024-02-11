@@ -73,7 +73,7 @@ class BagManager:
         """
         metadata = {}
         metadata["bag_path"] = self.bag_path
-        metadata["duraction"] = self.reader.duration
+        metadata["duration"] = self.reader.duration
         metadata["start_time"] = self.reader.start_time
         metadata["end_time"] = self.reader.end_time
         metadata["message_count"] = self.reader.message_count
