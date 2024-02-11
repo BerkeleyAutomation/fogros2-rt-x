@@ -59,7 +59,7 @@ class DatasetManager:
             ):
                 columns[key] = "INTEGER"
             else:
-                columns[key] = "BLOB"  # store as it is
+                columns[key] = "TEXT"  # store as it is
         columns["should_export_as_rlds"] = "INTEGER"
         print(columns)
         self.sql_backend.create_table(
