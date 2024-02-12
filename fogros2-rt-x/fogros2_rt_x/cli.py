@@ -31,13 +31,12 @@
 # PROVIDED HEREUNDER IS PROVIDED "AS IS". REGENTS HAS NO OBLIGATION TO PROVIDE
 # MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
-from .exporter import DatasetExporter
 from ros2cli.verb import VerbExtension
 
 from ros2cli.command import CommandExtension, add_subparsers_on_demand
 import os
 from .dataset_spec import DatasetFeatureSpec
-from .plugins.conf_base import *
+from .conf_base import *
 from .dataset_utils import *
 from .dataset_manager import DatasetManager
 from .verbs import *
