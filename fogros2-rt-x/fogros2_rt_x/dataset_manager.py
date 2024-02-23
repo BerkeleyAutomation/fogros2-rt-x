@@ -32,6 +32,7 @@ class DatasetManager:
         """
         self.dataset_directory = dataset_directory
         self.bag_files = self.get_all_bag_files(self.dataset_directory)
+        print(self.bag_files)
         self.metadata_dict = self.get_all_bag_metadata()
 
         self.create_table_from_metadata(self.metadata_dict[self.bag_files[0]])
@@ -122,6 +123,10 @@ class DatasetManager:
             for file in files:
                 if file.startswith("rosbag"):
                     bag_files.append(root)
+                elif file.endswith(".db3"):
+                    bag_files.append(root)
+                else:
+                    print(f"Skipping {file} as it is not a bag file")
 
         return bag_files
 
